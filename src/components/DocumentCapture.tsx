@@ -7,7 +7,6 @@ import {
   Loader2,
   RefreshCw,
   ScanText,
-  ShieldCheck,
   Trash2,
 } from 'lucide-react';
 import type { TranslationKeys } from '../i18n/ar';
@@ -69,28 +68,20 @@ export function DocumentCapture({
         >
           {t.sectionDocTitle}
         </h2>
-        <p className="mt-1 text-sm text-[#685F58]">{t.sectionDocDesc}</p>
       </div>
 
-      {/* Privacy Notice & Consent BEFORE Processing */}
-      <div className="mb-4 rounded-2xl border border-[#2C2C2C]/10 bg-[#F4EFEA] p-3.5">
-        <div className="flex items-start gap-2.5 text-xs text-[#685F58] sm:text-sm">
-          <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-[#8C5338]" aria-hidden="true" />
-          <p className="m-0 leading-relaxed">{t.geminiPrivacyNotice}</p>
-        </div>
-
-        <label className="mt-3 flex min-h-[44px] cursor-pointer items-center gap-3 border-t border-[#2C2C2C]/10 pt-3">
-          <input
-            type="checkbox"
-            checked={geminiConsent}
-            onChange={(e) => onToggleConsent(e.target.checked)}
-            className="h-5 w-5 shrink-0 accent-[#C58B6D]"
-          />
-          <span className="text-sm font-semibold text-[#2C2C2C]">
-            {t.geminiConsentLabel}
-          </span>
-        </label>
-      </div>
+      {/* Consent BEFORE Processing */}
+      <label className="mb-4 flex min-h-[48px] cursor-pointer items-center gap-3 rounded-2xl border border-[#2C2C2C]/10 bg-[#F4EFEA] px-3.5 py-2.5">
+        <input
+          type="checkbox"
+          checked={geminiConsent}
+          onChange={(e) => onToggleConsent(e.target.checked)}
+          className="h-5 w-5 shrink-0 accent-[#C58B6D]"
+        />
+        <span className="text-sm font-semibold text-[#2C2C2C]">
+          {t.geminiConsentLabel}
+        </span>
+      </label>
 
       {/* Hidden File Inputs */}
       <input
@@ -138,16 +129,13 @@ export function DocumentCapture({
           <div className="space-y-3">
             {/* Reassuring Non-Photographic Suggestion Card (no ID photo shown) */}
             <div className="rounded-2xl border border-[#C58B6D]/30 bg-gradient-to-br from-[#F4EFEA] to-[#FAF7F2] p-4">
-              <div className="flex items-start gap-3">
+              <div className="flex items-center gap-3">
                 <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#E8A588]/25 text-[#8C5338]">
                   <ScanText className="h-5 w-5" aria-hidden="true" />
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="m-0 text-sm font-bold text-[#2C2C2C]">
                     {t.docPlaceholderTitle}
-                  </p>
-                  <p className="m-0 mt-1 text-xs leading-relaxed text-[#685F58]">
-                    {t.docPlaceholderDesc}
                   </p>
                 </div>
               </div>
@@ -372,7 +360,6 @@ export function DocumentCapture({
         </div>
       )}
 
-      <p className="m-0 mt-4 text-xs text-[#685F58]">{t.authenticityDisclaimer}</p>
     </section>
   );
 }

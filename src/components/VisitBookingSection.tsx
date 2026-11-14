@@ -29,14 +29,13 @@ export function VisitBookingSection({
       aria-labelledby="visit-section-title"
       className="rounded-2xl border border-[#2C2C2C]/10 bg-[#FAF7F2] p-4 shadow-[var(--shadow-card)] sm:rounded-3xl sm:p-6"
     >
-      <div className="mb-5">
+      <div className="mb-4">
         <h2
           id="visit-section-title"
           className="text-lg font-bold text-[#2C2C2C] sm:text-xl"
         >
           {t.sectionVisitTitle}
         </h2>
-        <p className="mt-1 text-sm text-[#685F58]">{t.sectionVisitDesc}</p>
       </div>
 
       {/* Purpose of Visit */}

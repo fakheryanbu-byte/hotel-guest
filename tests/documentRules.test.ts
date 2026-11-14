@@ -7,6 +7,8 @@ import {
   buildWhatsAppMessage,
   buildWhatsAppUrl,
   createEmptyGuestForm,
+  createEmptyLockedFields,
+  deriveLockedFieldsFromExtraction,
   getFieldVisibility,
   isMemberUnder18,
   isValidMobileNumber,
@@ -612,5 +614,91 @@ describe('Hotel branch configuration, Visit Purpose, Language, and Sharing', () 
     expect(form.familyMembers[0].fullName).toBe('عبدالرحيم بن علي بن سعيد القرشي المالكي');
     expect(form.familyMembers[0].documentNumber).toBe('1008592030');
     expect(form.familyMembers[1].fullName).toBe('أمل ضيف الله محمد المالكي');
+  });
+
+  it('locks extracted OCR fields while leaving missing fields editable', () => {
+    const emptyForm = createEmptyGuestForm();
+    const idExtracted: ExtractedDocumentData = {
+      documentType: 'national_id',
+      fullName: 'محمد عبدالله القحطاني',
+      nameParts: { firstName: 'محمد', fatherName: 'عبدالله', grandfatherName: null, familyName: 'القحطاني' },
+      documentNumber: '1012345678',
+      nationality: 'سعودي',
+      sex: 'male',
+      dateOfBirth: '1410/03/04',
+      birthCalendar: 'hijri',
+      expiryDate: '1450/01/01',
+      expiryCalendar: 'hijri',
+      versionNumber: null, // unreadable from front
+      familyMembers: [],
+      unreadableFields: ['versionNumber'],
+      warnings: [],
+    };
+    const idForm = applyExtractedDataToForm(emptyForm, idExtracted, false);
+    const idLocks = deriveLockedFieldsFromExtraction(
+      createEmptyLockedFields(),
+      emptyForm,
+      idForm,
+      idExtracted,
+      false
+    );
+
+    expect(idLocks.documentType).toBe(true);
+    expect(idLocks.fullName).toBe(true);
+    expect(idLocks.documentNumber).toBe(true);
+    expect(idLocks.nationality).toBe(true);
+    expect(idLocks.sex).toBe(true);
+    expect(idLocks.dateOfBirth).toBe(true);
+    expect(idLocks.expiryDate).toBe(true);
+    expect(idLocks.versionNumber).toBe(false);
+
+    // Family register: cardholder DOB is absent on card -> remains unlocked for wheel picker; dependent DOB is locked
+    const famExtracted: ExtractedDocumentData = {
+      documentType: 'family_register',
+      fullName: 'سعد القحطاني',
+      nameParts: { firstName: 'سعد', fatherName: null, grandfatherName: null, familyName: 'القحطاني' },
+      documentNumber: '1099887766',
+      nationality: 'سعودي',
+      sex: 'male',
+      dateOfBirth: null,
+      birthCalendar: 'unknown',
+      expiryDate: null,
+      expiryCalendar: 'unknown',
+      versionNumber: null,
+      familyMembers: [
+        {
+          fullName: 'سعد القحطاني',
+          documentNumber: '1099887766',
+          sex: 'male',
+          dateOfBirth: '',
+          birthCalendar: 'unknown',
+          relationship: 'صاحب السجل',
+        },
+        {
+          fullName: 'نورة القحطاني',
+          documentNumber: '1099887700',
+          sex: 'female',
+          dateOfBirth: '1412/05/06',
+          birthCalendar: 'hijri',
+          relationship: 'زوجة',
+        },
+      ],
+      unreadableFields: [],
+      warnings: [],
+    };
+    const famForm = applyExtractedDataToForm(emptyForm, famExtracted, false);
+    const famLocks = deriveLockedFieldsFromExtraction(
+      createEmptyLockedFields(),
+      emptyForm,
+      famForm,
+      famExtracted,
+      false
+    );
+
+    expect(famLocks.familyMembers['member_1']?.fullName).toBe(true);
+    expect(famLocks.familyMembers['member_1']?.documentNumber).toBe(true);
+    expect(famLocks.familyMembers['member_1']?.dateOfBirth).toBe(false);
+    expect(famLocks.familyMembers['member_2']?.fullName).toBe(true);
+    expect(famLocks.familyMembers['member_2']?.dateOfBirth).toBe(true);
   });
 });

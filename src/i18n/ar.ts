@@ -15,10 +15,7 @@ export const ar = {
 
   // Section 2: Document reading
   sectionDocTitle: '2. قراءة الوثيقة',
-  sectionDocDesc: 'استخرج بيانات الهوية أو الإقامة أو جواز السفر أو سجل الأسرة آلياً لتعبئة النموذج — أو أدخلها يدوياً أدناه.',
-  docPlaceholderTitle: 'قراءة نصية فورية بدون حفظ',
-  docPlaceholderDesc:
-    'تُقرأ البيانات الظاهرة لتعبئة النموذج فقط وتُمسح فوراً من الذاكرة، دون عرض أو حفظ أي صورة للهوية.',
+  docPlaceholderTitle: 'قراءة نصية فورية',
   docLoadedHiddenTitle: 'تم تجهيز الملف للقراءة النصية فقط',
   docLoadedHiddenDesc: 'حفاظاً على خصوصيتك، لا تُعرض صورة الوثيقة على الشاشة ولن تبقى أي نسخة منها.',
   frontSideLabel: 'الوجه الأمامي للوثيقة',
@@ -28,23 +25,17 @@ export const ar = {
   retakePhoto: 'إعادة القراءة',
   deletePhoto: 'إلغاء',
   addBackSide: 'قراءة الوجه الخلفي / صفحة إضافية',
-  geminiPrivacyNotice:
-    'تنبيه الخصوصية: تتم قراءة البيانات النصية من الوثيقة مؤقتاً لتعبئة النموذج فقط، ولا يتم عرض صورة الهوية أو حفظ أي نسخة منها نهائياً.',
   geminiConsentLabel: 'أوافق على قراءة بيانات الوثيقة آلياً لتعبئة النموذج دون حفظها.',
   analyzeNowButton: 'استخراج البيانات الآن',
   readingDocument: 'جارٍ قراءة الوثيقة...',
-  readingComplete:
-    'تمت قراءة البيانات الظاهرة وإزالة الملف من الذاكرة فوراً لحماية خصوصيتك. يرجى مراجعة البيانات واستكمال الحقول الناقصة.',
+  readingComplete: 'تمت قراءة البيانات',
   readingFailedFallback:
     'تعذرت قراءة الوثيقة بوضوح. يمكنك المحاولة مرة أخرى بإضاءة أوضح أو تعبئة البيانات يدوياً أدناه.',
-  authenticityDisclaimer:
-    'ملاحظة: القراءة الآلية تساعد في تعبئة النموذج فقط ولا تُعد تحققاً من أصالة الوثيقة.',
   warningsTitle: 'تنبيهات القراءة',
   unreadableFieldsLabel: 'حقول غير واضحة أو ناقصة:',
 
   // Section 3: Guest data form
   sectionDataTitle: '3. مراجعة البيانات واستكمالها',
-  sectionDataDesc: 'جميع الحقول قابلة للتعديل. الحقول المطلوبة المظللة يجب استكمالها قبل الإرسال.',
   missingBadge: 'ناقص',
   requiredMark: '*',
   statusIncompleteData: 'ناقص بيانات',
@@ -83,7 +74,7 @@ export const ar = {
   fieldBorderNumber: 'رقم الحدود',
   fieldBorderPlaceholder: '30XXXXXXXX',
   borderHelperText: 'تنبيه: رقم الحدود يختلف عن رقم الجواز ورقم التأشيرة.',
-  borderUnknownCheckbox: 'لا أعرف رقم الحدود — أطلب مساعدة الاستقبال (ستُرسل الحالة كـ «ناقص بيانات»)',
+  borderUnknownCheckbox: 'لا أعرف رقم الحدود',
   fieldMobileNumber: 'رقم الجوال مع رمز الدولة',
   fieldMobilePlaceholder: '+9665XXXXXXXX',
   mobileHelperText: 'المفتاح الدولي 966+ مضاف تلقائياً ويمكنك تعديله لأي دولة أخرى.',
@@ -116,7 +107,6 @@ export const ar = {
 
   // Section 4: Visit & booking
   sectionVisitTitle: '4. سبب الزيارة ومصدر الحجز',
-  sectionVisitDesc: 'يُختار يدوياً من قِبل النزيل (لا يُستنتج تلقائياً).',
   fieldPurposeOfVisit: 'سبب الزيارة',
   purposeSettingsNote: 'هذه خيارات تشغيلية قابلة للتعديل من إعدادات التطبيق.',
   fieldOtherPurpose: 'توضيح سبب الزيارة',

@@ -17,10 +17,7 @@ export const en: TranslationKeys = {
 
   // Section 2: Document reading
   sectionDocTitle: '2. Read Document',
-  sectionDocDesc: 'Automatically extract details from your National ID, Iqama, Passport, or Family Register — or fill in the form manually below.',
-  docPlaceholderTitle: 'Instant text reading · Zero storage',
-  docPlaceholderDesc:
-    'Only visible text is read to pre-fill the form and immediately cleared from memory, without displaying or keeping any ID photo.',
+  docPlaceholderTitle: 'Instant text reading',
   docLoadedHiddenTitle: 'Ready for text-only reading',
   docLoadedHiddenDesc: 'For your privacy, your ID image is not displayed on screen and no copy is kept.',
   frontSideLabel: 'Front side of document',
@@ -30,23 +27,17 @@ export const en: TranslationKeys = {
   retakePhoto: 'Read again',
   deletePhoto: 'Remove',
   addBackSide: 'Read back side / extra page',
-  geminiPrivacyNotice:
-    'Privacy notice: Only visible text is temporarily read to pre-fill the form. Your ID image is never displayed or saved permanently.',
   geminiConsentLabel: 'I agree to automatically read document details to fill the form without saving the image.',
   analyzeNowButton: 'Extract Details Now',
   readingDocument: 'Reading document...',
-  readingComplete:
-    'Visible details extracted and the file was immediately cleared from memory. Please review and complete any missing fields below.',
+  readingComplete: 'Data has been read',
   readingFailedFallback:
     'Could not read the document clearly. Please try again in clearer lighting or fill in the fields manually below.',
-  authenticityDisclaimer:
-    'Note: Automated extraction only helps pre-fill the form and does not verify document authenticity.',
   warningsTitle: 'Reading notes',
   unreadableFieldsLabel: 'Unclear or missing fields:',
 
   // Section 3: Guest data form
   sectionDataTitle: '3. Review & Complete Details',
-  sectionDataDesc: 'All fields are editable. Highlighted required fields must be completed before sending.',
   missingBadge: 'Missing',
   requiredMark: '*',
   statusIncompleteData: 'Missing data',
@@ -86,8 +77,7 @@ export const en: TranslationKeys = {
   fieldBorderNumber: 'Border number',
   fieldBorderPlaceholder: '30XXXXXXXX',
   borderHelperText: 'Note: Border number is different from your passport number and visa number.',
-  borderUnknownCheckbox:
-    "I don't know my border number — request reception assistance (sent marked as Missing data)",
+  borderUnknownCheckbox: "I don't know my border number",
   fieldMobileNumber: 'Mobile number with country code',
   fieldMobilePlaceholder: '+9665XXXXXXXX',
   mobileHelperText: 'International code +966 is pre-filled and can be changed for other countries.',
@@ -120,7 +110,6 @@ export const en: TranslationKeys = {
 
   // Section 4: Visit & booking
   sectionVisitTitle: '4. Purpose of Visit & Booking Source',
-  sectionVisitDesc: 'Selected manually by the guest (never guessed from the document).',
   fieldPurposeOfVisit: 'Purpose of visit',
   purposeSettingsNote: 'These operational categories can be customized in app settings.',
   fieldOtherPurpose: 'Please specify purpose',

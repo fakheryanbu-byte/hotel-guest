@@ -5,6 +5,7 @@ import type {
   DocumentType,
   FamilyMember,
   GuestFormData,
+  LockedFormFields,
   SexType,
 } from '../types/guest';
 import {
@@ -18,6 +19,7 @@ import { DateWheelPicker } from './DateWheelPicker';
 
 interface GuestDataFormProps {
   form: GuestFormData;
+  lockedFields: LockedFormFields;
   missingFields: Set<string>;
   onChangeField: <K extends keyof GuestFormData>(key: K, value: GuestFormData[K]) => void;
   onChangeDocumentType: (nextType: DocumentType) => void;
@@ -31,6 +33,7 @@ interface GuestDataFormProps {
 
 export function GuestDataForm({
   form,
+  lockedFields,
   missingFields,
   onChangeField,
   onChangeDocumentType,
@@ -48,11 +51,13 @@ export function GuestDataForm({
     form.familyMembers.length > 0 &&
     Boolean(form.primaryMemberId);
 
-  const inputClass = (fieldKey: string) =>
-    `min-h-[48px] w-full rounded-xl border px-3.5 py-2.5 text-sm text-[#2C2C2C] transition-colors focus:outline-none focus:ring-2 focus:ring-[#C58B6D] ${
-      missingFields.has(fieldKey)
-        ? 'border-[#C58B6D] bg-[#E8A588]/15'
-        : 'border-[#2C2C2C]/15 bg-[#FFFFFF]'
+  const inputClass = (fieldKey: string, isLocked = false) =>
+    `min-h-[48px] w-full rounded-xl border px-3.5 py-2.5 text-sm text-[#2C2C2C] transition-colors ${
+      isLocked
+        ? 'cursor-default border-[#2C2C2C]/10 bg-[#F4EFEA]/85 focus:outline-none'
+        : missingFields.has(fieldKey)
+          ? 'border-[#C58B6D] bg-[#E8A588]/15 focus:outline-none focus:ring-2 focus:ring-[#C58B6D]'
+          : 'border-[#2C2C2C]/15 bg-[#FFFFFF] focus:outline-none focus:ring-2 focus:ring-[#C58B6D]'
     }`;
 
   const renderLabel = (label: string, fieldKey: string, required = false) => (
@@ -75,14 +80,13 @@ export function GuestDataForm({
       aria-labelledby="data-section-title"
       className="rounded-2xl border border-[#2C2C2C]/10 bg-[#FAF7F2] p-4 shadow-[var(--shadow-card)] sm:rounded-3xl sm:p-6"
     >
-      <div className="mb-5">
+      <div className="mb-4">
         <h2
           id="data-section-title"
           className="text-lg font-bold text-[#2C2C2C] sm:text-xl"
         >
           {t.sectionDataTitle}
         </h2>
-        <p className="mt-1 text-sm text-[#685F58]">{t.sectionDataDesc}</p>
       </div>
 
       <div className="space-y-4">
@@ -91,8 +95,13 @@ export function GuestDataForm({
           {renderLabel(t.fieldDocumentType, 'documentType', true)}
           <select
             value={form.documentType}
-            onChange={(e) => onChangeDocumentType(e.target.value as DocumentType)}
-            className={inputClass('documentType')}
+            disabled={Boolean(lockedFields.documentType)}
+            onChange={(e) => {
+              if (!lockedFields.documentType) {
+                onChangeDocumentType(e.target.value as DocumentType);
+              }
+            }}
+            className={inputClass('documentType', Boolean(lockedFields.documentType))}
           >
             <option value="unknown">{t.docTypes.unknown}</option>
             <option value="national_id">{t.docTypes.national_id}</option>
@@ -133,6 +142,7 @@ export function GuestDataForm({
                   const under18 = isMemberUnder18(member);
                   const orderLabel =
                     index === 0 ? t.familyCardholderBadge : `(${index})`;
+                  const memberLock = lockedFields.familyMembers[member.id] ?? {};
 
                   return (
                     <div
@@ -210,29 +220,45 @@ export function GuestDataForm({
                         className={`flex items-stretch overflow-hidden rounded-xl border transition-colors ${
                           (isPrimary || isAccompanying) && !member.fullName.trim()
                             ? 'border-[#C58B6D] bg-[#E8A588]/15'
-                            : 'border-[#2C2C2C]/15 bg-[#FFFFFF]'
+                            : memberLock.fullName && memberLock.relationship
+                              ? 'border-[#2C2C2C]/10 bg-[#F4EFEA]/85'
+                              : 'border-[#2C2C2C]/15 bg-[#FFFFFF]'
                         }`}
                       >
                         <input
                           type="text"
                           value={member.fullName}
-                          onChange={(e) =>
-                            onUpdateFamilyMember(member.id, { fullName: e.target.value })
-                          }
+                          readOnly={Boolean(memberLock.fullName)}
+                          aria-readonly={Boolean(memberLock.fullName)}
+                          onChange={(e) => {
+                            if (!memberLock.fullName) {
+                              onUpdateFamilyMember(member.id, { fullName: e.target.value });
+                            }
+                          }}
                           placeholder={t.familyMemberName}
                           aria-label={t.familyMemberName}
-                          className="min-h-[44px] min-w-0 flex-1 bg-transparent px-3 py-2 text-xs font-medium text-[#2C2C2C] placeholder:text-[#685F58]/70 focus:outline-none"
+                          className={`min-h-[44px] min-w-0 flex-1 px-3 py-2 text-xs font-medium text-[#2C2C2C] placeholder:text-[#685F58]/70 focus:outline-none ${
+                            memberLock.fullName ? 'cursor-default bg-[#F4EFEA]/85' : 'bg-transparent'
+                          }`}
                         />
                         <div className="w-px self-stretch bg-[#2C2C2C]/15" aria-hidden="true" />
                         <input
                           type="text"
                           value={member.relationship}
-                          onChange={(e) =>
-                            onUpdateFamilyMember(member.id, { relationship: e.target.value })
-                          }
+                          readOnly={Boolean(memberLock.relationship)}
+                          aria-readonly={Boolean(memberLock.relationship)}
+                          onChange={(e) => {
+                            if (!memberLock.relationship) {
+                              onUpdateFamilyMember(member.id, { relationship: e.target.value });
+                            }
+                          }}
                           placeholder={t.familyMemberRelation}
                           aria-label={t.familyMemberRelation}
-                          className="min-h-[44px] w-[96px] shrink-0 bg-transparent px-2.5 py-2 text-center text-xs text-[#685F58] placeholder:text-[#685F58]/70 focus:outline-none sm:w-[128px]"
+                          className={`min-h-[44px] w-[96px] shrink-0 px-2.5 py-2 text-center text-xs text-[#685F58] placeholder:text-[#685F58]/70 focus:outline-none sm:w-[128px] ${
+                            memberLock.relationship
+                              ? 'cursor-default bg-[#F4EFEA]/85'
+                              : 'bg-transparent'
+                          }`}
                         />
                       </div>
 
@@ -243,42 +269,67 @@ export function GuestDataForm({
                             className={`overflow-hidden rounded-xl border transition-colors ${
                               isPrimary && !member.documentNumber.trim()
                                 ? 'border-[#C58B6D] bg-[#E8A588]/15'
-                                : 'border-[#2C2C2C]/15 bg-[#FFFFFF]'
+                                : memberLock.documentNumber
+                                  ? 'border-[#2C2C2C]/10 bg-[#F4EFEA]/85'
+                                  : 'border-[#2C2C2C]/15 bg-[#FFFFFF]'
                             }`}
                           >
                             <input
                               type="text"
                               dir="ltr"
                               value={member.documentNumber}
-                              onChange={(e) =>
-                                onUpdateFamilyMember(member.id, {
-                                  documentNumber: toAsciiDigits(e.target.value),
-                                })
-                              }
+                              readOnly={Boolean(memberLock.documentNumber)}
+                              aria-readonly={Boolean(memberLock.documentNumber)}
+                              onChange={(e) => {
+                                if (!memberLock.documentNumber) {
+                                  onUpdateFamilyMember(member.id, {
+                                    documentNumber: toAsciiDigits(e.target.value),
+                                  });
+                                }
+                              }}
                               placeholder={t.familyMemberDocNum}
                               aria-label={t.familyMemberDocNum}
-                              className="ltr-field tabular-nums min-h-[44px] w-full bg-transparent px-3 py-2 text-xs text-[#2C2C2C] placeholder:text-[#685F58]/70 focus:outline-none"
+                              className={`ltr-field tabular-nums min-h-[44px] w-full bg-transparent px-3 py-2 text-xs text-[#2C2C2C] placeholder:text-[#685F58]/70 focus:outline-none ${
+                                memberLock.documentNumber ? 'cursor-default' : ''
+                              }`}
                             />
                           </div>
 
-                          <DateWheelPicker
-                            value={member.dateOfBirth}
-                            calendar={member.birthCalendar}
-                            defaultCalendar="hijri"
-                            dobMissing={(isPrimary || isAccompanying) && !member.dateOfBirth.trim()}
-                            calendarMissing={isPrimary && member.birthCalendar === 'unknown'}
-                            dobLabel={t.familyMemberDob}
-                            calendarLabel={t.fieldCalendar}
-                            requiredMark={isPrimary || isAccompanying ? t.requiredMark : ''}
-                            missingBadge={t.missingBadge}
-                            onChange={(formattedDate, nextCal) =>
-                              onUpdateFamilyMember(member.id, {
-                                dateOfBirth: formattedDate,
-                                birthCalendar: nextCal,
-                              })
-                            }
-                            t={t}
-                          />
+                          {memberLock.dateOfBirth ? (
+                            <div className="overflow-hidden rounded-xl border border-[#2C2C2C]/10 bg-[#F4EFEA]/85 px-3 py-2">
+                              <span className="block text-[10px] font-semibold text-[#685F58]">
+                                {t.familyMemberDob}
+                              </span>
+                              <input
+                                type="text"
+                                dir="ltr"
+                                value={member.dateOfBirth}
+                                readOnly
+                                aria-readonly="true"
+                                aria-label={t.familyMemberDob}
+                                className="ltr-field tabular-nums min-h-[28px] w-full cursor-default bg-transparent text-xs font-medium text-[#2C2C2C] focus:outline-none"
+                              />
+                            </div>
+                          ) : (
+                            <DateWheelPicker
+                              value={member.dateOfBirth}
+                              calendar={member.birthCalendar}
+                              defaultCalendar="hijri"
+                              dobMissing={(isPrimary || isAccompanying) && !member.dateOfBirth.trim()}
+                              calendarMissing={isPrimary && member.birthCalendar === 'unknown'}
+                              dobLabel={t.familyMemberDob}
+                              calendarLabel={t.fieldCalendar}
+                              requiredMark={isPrimary || isAccompanying ? t.requiredMark : ''}
+                              missingBadge={t.missingBadge}
+                              onChange={(formattedDate, nextCal) =>
+                                onUpdateFamilyMember(member.id, {
+                                  dateOfBirth: formattedDate,
+                                  birthCalendar: nextCal,
+                                })
+                              }
+                              t={t}
+                            />
+                          )}
                         </>
                       ) : (
                         /* Row 2 for dependents: Date of Birth + Record Number on the same line with divider */
@@ -294,7 +345,9 @@ export function GuestDataForm({
                             className={`flex min-w-0 flex-1 flex-col justify-center px-3 py-1.5 ${
                               (isPrimary || isAccompanying) && !member.dateOfBirth.trim()
                                 ? 'bg-[#E8A588]/15'
-                                : ''
+                                : memberLock.dateOfBirth
+                                  ? 'bg-[#F4EFEA]/85'
+                                  : ''
                             }`}
                           >
                             <div className="flex items-center justify-between gap-1">
@@ -315,7 +368,10 @@ export function GuestDataForm({
                               type="text"
                               dir="ltr"
                               value={member.dateOfBirth}
+                              readOnly={Boolean(memberLock.dateOfBirth)}
+                              aria-readonly={Boolean(memberLock.dateOfBirth)}
                               onChange={(e) => {
+                                if (memberLock.dateOfBirth) return;
                                 const nextDob = toAsciiDigits(e.target.value);
                                 const { inferredCalendar } = normalizeDateInput(nextDob);
                                 const patch: Partial<FamilyMember> = { dateOfBirth: nextDob };
@@ -325,6 +381,7 @@ export function GuestDataForm({
                                 onUpdateFamilyMember(member.id, patch);
                               }}
                               onBlur={() => {
+                                if (memberLock.dateOfBirth) return;
                                 const { formatted, inferredCalendar } = normalizeDateInput(
                                   member.dateOfBirth
                                 );
@@ -341,7 +398,9 @@ export function GuestDataForm({
                               }}
                               placeholder={t.fieldDatePlaceholder}
                               aria-label={t.familyMemberDob}
-                              className="ltr-field tabular-nums min-h-[28px] w-full bg-transparent text-xs font-medium text-[#2C2C2C] placeholder:text-[#685F58]/60 focus:outline-none"
+                              className={`ltr-field tabular-nums min-h-[28px] w-full bg-transparent text-xs font-medium text-[#2C2C2C] placeholder:text-[#685F58]/60 focus:outline-none ${
+                                memberLock.dateOfBirth ? 'cursor-default' : ''
+                              }`}
                             />
                           </div>
 
@@ -349,7 +408,11 @@ export function GuestDataForm({
 
                           <div
                             className={`flex min-w-0 flex-1 flex-col justify-center px-3 py-1.5 ${
-                              isPrimary && !member.documentNumber.trim() ? 'bg-[#E8A588]/15' : ''
+                              isPrimary && !member.documentNumber.trim()
+                                ? 'bg-[#E8A588]/15'
+                                : memberLock.documentNumber
+                                  ? 'bg-[#F4EFEA]/85'
+                                  : ''
                             }`}
                           >
                             <span className="text-[10px] font-semibold text-[#685F58]">
@@ -362,14 +425,20 @@ export function GuestDataForm({
                               type="text"
                               dir="ltr"
                               value={member.documentNumber}
-                              onChange={(e) =>
-                                onUpdateFamilyMember(member.id, {
-                                  documentNumber: toAsciiDigits(e.target.value),
-                                })
-                              }
+                              readOnly={Boolean(memberLock.documentNumber)}
+                              aria-readonly={Boolean(memberLock.documentNumber)}
+                              onChange={(e) => {
+                                if (!memberLock.documentNumber) {
+                                  onUpdateFamilyMember(member.id, {
+                                    documentNumber: toAsciiDigits(e.target.value),
+                                  });
+                                }
+                              }}
                               placeholder={t.fieldDocumentNumberPlaceholder}
                               aria-label={t.familyMemberDocNum}
-                              className="ltr-field tabular-nums min-h-[28px] w-full bg-transparent text-xs font-medium text-[#2C2C2C] placeholder:text-[#685F58]/60 focus:outline-none"
+                              className={`ltr-field tabular-nums min-h-[28px] w-full bg-transparent text-xs font-medium text-[#2C2C2C] placeholder:text-[#685F58]/60 focus:outline-none ${
+                                memberLock.documentNumber ? 'cursor-default' : ''
+                              }`}
                             />
                           </div>
                         </div>
@@ -390,9 +459,15 @@ export function GuestDataForm({
               <input
                 type="text"
                 value={form.fullName}
-                onChange={(e) => onChangeField('fullName', e.target.value)}
+                readOnly={Boolean(lockedFields.fullName)}
+                aria-readonly={Boolean(lockedFields.fullName)}
+                onChange={(e) => {
+                  if (!lockedFields.fullName) {
+                    onChangeField('fullName', e.target.value);
+                  }
+                }}
                 placeholder={t.fieldFullNamePlaceholder}
-                className={inputClass('fullName')}
+                className={inputClass('fullName', Boolean(lockedFields.fullName))}
               />
             </div>
 
@@ -405,9 +480,15 @@ export function GuestDataForm({
                   dir="ltr"
                   inputMode="text"
                   value={form.documentNumber}
-                  onChange={(e) => onChangeField('documentNumber', toAsciiDigits(e.target.value))}
+                  readOnly={Boolean(lockedFields.documentNumber)}
+                  aria-readonly={Boolean(lockedFields.documentNumber)}
+                  onChange={(e) => {
+                    if (!lockedFields.documentNumber) {
+                      onChangeField('documentNumber', toAsciiDigits(e.target.value));
+                    }
+                  }}
                   placeholder={t.fieldDocumentNumberPlaceholder}
-                  className={`${inputClass('documentNumber')} ltr-field tabular-nums`}
+                  className={`${inputClass('documentNumber', Boolean(lockedFields.documentNumber))} ltr-field tabular-nums`}
                 />
               </div>
 
@@ -417,7 +498,10 @@ export function GuestDataForm({
                   type="text"
                   dir="ltr"
                   value={form.dateOfBirth}
+                  readOnly={Boolean(lockedFields.dateOfBirth)}
+                  aria-readonly={Boolean(lockedFields.dateOfBirth)}
                   onChange={(e) => {
+                    if (lockedFields.dateOfBirth) return;
                     const nextDob = toAsciiDigits(e.target.value);
                     onChangeField('dateOfBirth', nextDob);
                     const { inferredCalendar } = normalizeDateInput(nextDob);
@@ -426,6 +510,7 @@ export function GuestDataForm({
                     }
                   }}
                   onBlur={() => {
+                    if (lockedFields.dateOfBirth) return;
                     const { formatted, inferredCalendar } = normalizeDateInput(form.dateOfBirth);
                     if (formatted !== form.dateOfBirth) {
                       onChangeField('dateOfBirth', formatted);
@@ -435,7 +520,7 @@ export function GuestDataForm({
                     }
                   }}
                   placeholder={t.fieldDatePlaceholder}
-                  className={`${inputClass('dateOfBirth')} ltr-field tabular-nums`}
+                  className={`${inputClass('dateOfBirth', Boolean(lockedFields.dateOfBirth))} ltr-field tabular-nums`}
                 />
               </div>
             </div>
@@ -447,9 +532,15 @@ export function GuestDataForm({
                 <input
                   type="text"
                   value={form.nationality}
-                  onChange={(e) => onChangeField('nationality', e.target.value)}
+                  readOnly={Boolean(lockedFields.nationality)}
+                  aria-readonly={Boolean(lockedFields.nationality)}
+                  onChange={(e) => {
+                    if (!lockedFields.nationality) {
+                      onChangeField('nationality', e.target.value);
+                    }
+                  }}
                   placeholder={t.fieldNationalityPlaceholder}
-                  className={inputClass('nationality')}
+                  className={inputClass('nationality', Boolean(lockedFields.nationality))}
                 />
               </div>
 
@@ -457,8 +548,13 @@ export function GuestDataForm({
                 {renderLabel(t.fieldSex, 'sex', false)}
                 <select
                   value={form.sex}
-                  onChange={(e) => onChangeField('sex', e.target.value as SexType)}
-                  className={inputClass('sex')}
+                  disabled={Boolean(lockedFields.sex)}
+                  onChange={(e) => {
+                    if (!lockedFields.sex) {
+                      onChangeField('sex', e.target.value as SexType);
+                    }
+                  }}
+                  className={inputClass('sex', Boolean(lockedFields.sex))}
                 >
                   <option value="">{t.sexSelect}</option>
                   <option value="male">{t.sexMale}</option>
@@ -485,7 +581,10 @@ export function GuestDataForm({
                     type="text"
                     dir="ltr"
                     value={form.expiryDate}
+                    readOnly={Boolean(lockedFields.expiryDate)}
+                    aria-readonly={Boolean(lockedFields.expiryDate)}
                     onChange={(e) => {
+                      if (lockedFields.expiryDate) return;
                       const nextExpiry = toAsciiDigits(e.target.value);
                       onChangeField('expiryDate', nextExpiry);
                       const { inferredCalendar } = normalizeDateInput(nextExpiry);
@@ -494,6 +593,7 @@ export function GuestDataForm({
                       }
                     }}
                     onBlur={() => {
+                      if (lockedFields.expiryDate) return;
                       const { formatted, inferredCalendar } = normalizeDateInput(form.expiryDate);
                       if (formatted !== form.expiryDate) {
                         onChangeField('expiryDate', formatted);
@@ -503,7 +603,7 @@ export function GuestDataForm({
                       }
                     }}
                     placeholder={t.fieldDatePlaceholder}
-                    className={`${inputClass('expiryDate')} ltr-field tabular-nums`}
+                    className={`${inputClass('expiryDate', Boolean(lockedFields.expiryDate))} ltr-field tabular-nums`}
                   />
                 </div>
               )}
@@ -516,9 +616,15 @@ export function GuestDataForm({
                     dir="ltr"
                     inputMode="numeric"
                     value={form.versionNumber}
-                    onChange={(e) => onChangeField('versionNumber', toAsciiDigits(e.target.value))}
+                    readOnly={Boolean(lockedFields.versionNumber)}
+                    aria-readonly={Boolean(lockedFields.versionNumber)}
+                    onChange={(e) => {
+                      if (!lockedFields.versionNumber) {
+                        onChangeField('versionNumber', toAsciiDigits(e.target.value));
+                      }
+                    }}
                     placeholder={t.fieldVersionPlaceholder}
-                    className={`${inputClass('versionNumber')} ltr-field tabular-nums`}
+                    className={`${inputClass('versionNumber', Boolean(lockedFields.versionNumber))} ltr-field tabular-nums`}
                   />
                 </div>
               )}

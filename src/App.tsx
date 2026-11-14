@@ -17,6 +17,7 @@ import type {
   HotelBranch,
   HotelBranchId,
   Language,
+  LockedFormFields,
   VisitPurposeId,
 } from './types/guest';
 import {
@@ -24,6 +25,8 @@ import {
   buildWhatsAppMessage,
   buildWhatsAppUrl,
   createEmptyGuestForm,
+  createEmptyLockedFields,
+  deriveLockedFieldsFromExtraction,
   isMemberUnder18,
   selectPrimaryFamilyMember,
   switchDocumentType,
@@ -53,6 +56,7 @@ export default function App() {
   const [unreadableFields, setUnreadableFields] = useState<string[]>([]);
 
   const [form, setForm] = useState<GuestFormData>(createEmptyGuestForm);
+  const [lockedFields, setLockedFields] = useState<LockedFormFields>(createEmptyLockedFields);
   const [declarationAccepted, setDeclarationAccepted] = useState(false);
   const [attemptedSubmit, setAttemptedSubmit] = useState(false);
   const [preparedMessage, setPreparedMessage] = useState<string | null>(null);
@@ -176,7 +180,13 @@ export default function App() {
       }
 
       const extracted = payload.data;
-      setForm((prev) => applyExtractedDataToForm(prev, extracted, mergeWithExisting));
+      setForm((prev) => {
+        const nextForm = applyExtractedDataToForm(prev, extracted, mergeWithExisting);
+        setLockedFields((prevLocks) =>
+          deriveLockedFieldsFromExtraction(prevLocks, prev, nextForm, extracted, mergeWithExisting)
+        );
+        return nextForm;
+      });
       setWarnings(Array.isArray(extracted.warnings) ? extracted.warnings : []);
       setUnreadableFields(
         Array.isArray(extracted.unreadableFields) ? extracted.unreadableFields : []
@@ -238,6 +248,7 @@ export default function App() {
       setReadError(null);
       setWarnings([]);
       setUnreadableFields([]);
+      setLockedFields(createEmptyLockedFields());
     } else {
       if (backUrlRef.current) URL.revokeObjectURL(backUrlRef.current);
       backUrlRef.current = null;
@@ -417,6 +428,7 @@ export default function App() {
     setWarnings([]);
     setUnreadableFields([]);
     setForm(createEmptyGuestForm());
+    setLockedFields(createEmptyLockedFields());
     setDeclarationAccepted(false);
     setAttemptedSubmit(false);
     setPreparedMessage(null);
@@ -505,6 +517,7 @@ export default function App() {
             <div className="space-y-5 lg:col-span-7">
               <GuestDataForm
                 form={form}
+                lockedFields={lockedFields}
                 missingFields={missingFieldsSet}
                 onChangeField={handleChangeField}
                 onChangeDocumentType={handleChangeDocumentType}

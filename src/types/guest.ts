@@ -103,6 +103,25 @@ export interface DocumentImageSlot {
   mimeType: string;
 }
 
+export interface LockedMemberFields {
+  fullName?: boolean;
+  relationship?: boolean;
+  documentNumber?: boolean;
+  dateOfBirth?: boolean;
+}
+
+export interface LockedFormFields {
+  documentType?: boolean;
+  fullName?: boolean;
+  documentNumber?: boolean;
+  nationality?: boolean;
+  sex?: boolean;
+  dateOfBirth?: boolean;
+  expiryDate?: boolean;
+  versionNumber?: boolean;
+  familyMembers: Record<string, LockedMemberFields>;
+}
+
 export type ValidationFieldKey =
   | keyof GuestFormData
   | 'hotel'

@@ -8,6 +8,8 @@ import type {
   FamilyMember,
   GuestFormData,
   HotelBranch,
+  LockedFormFields,
+  LockedMemberFields,
   SexType,
   ValidationResult,
 } from '../types/guest';
@@ -593,6 +595,100 @@ export function applyExtractedDataToForm(
   }
 
   return updated;
+}
+
+export function createEmptyLockedFields(): LockedFormFields {
+  return {
+    familyMembers: {},
+  };
+}
+
+export function deriveLockedFieldsFromExtraction(
+  prevLocked: LockedFormFields,
+  prevForm: GuestFormData,
+  nextForm: GuestFormData,
+  extracted: ExtractedDocumentData,
+  mergeMissingOnly: boolean
+): LockedFormFields {
+  const isLocked = (
+    wasLocked: boolean | undefined,
+    prevVal: string,
+    nextVal: string,
+    extractedVal: string | null | undefined
+  ): boolean => {
+    const hasIncoming = Boolean(extractedVal?.trim());
+    if (!mergeMissingOnly) {
+      return hasIncoming;
+    }
+    return Boolean(wasLocked || (!prevVal.trim() && nextVal.trim() && hasIncoming));
+  };
+
+  const nextMemberLocks: Record<string, LockedMemberFields> = {};
+  for (const member of nextForm.familyMembers) {
+    const prevMember = prevForm.familyMembers.find((pm) => pm.id === member.id);
+    const prevLock = prevLocked.familyMembers[member.id];
+    if (mergeMissingOnly && prevMember) {
+      nextMemberLocks[member.id] = {
+        fullName: Boolean(prevLock?.fullName || (!prevMember.fullName.trim() && member.fullName.trim())),
+        relationship: Boolean(
+          prevLock?.relationship || (!prevMember.relationship.trim() && member.relationship.trim())
+        ),
+        documentNumber: Boolean(
+          prevLock?.documentNumber ||
+            (!prevMember.documentNumber.trim() && member.documentNumber.trim())
+        ),
+        dateOfBirth: Boolean(
+          prevLock?.dateOfBirth || (!prevMember.dateOfBirth.trim() && member.dateOfBirth.trim())
+        ),
+      };
+    } else {
+      nextMemberLocks[member.id] = {
+        fullName: Boolean(member.fullName.trim()),
+        relationship: Boolean(member.relationship.trim()),
+        documentNumber: Boolean(member.documentNumber.trim()),
+        dateOfBirth: Boolean(member.dateOfBirth.trim()),
+      };
+    }
+  }
+
+  return {
+    documentType: mergeMissingOnly
+      ? Boolean(prevLocked.documentType || (prevForm.documentType === 'unknown' && nextForm.documentType !== 'unknown'))
+      : extracted.documentType !== 'unknown',
+    fullName: isLocked(prevLocked.fullName, prevForm.fullName, nextForm.fullName, extracted.fullName),
+    documentNumber: isLocked(
+      prevLocked.documentNumber,
+      prevForm.documentNumber,
+      nextForm.documentNumber,
+      extracted.documentNumber
+    ),
+    nationality: isLocked(
+      prevLocked.nationality,
+      prevForm.nationality,
+      nextForm.nationality,
+      extracted.nationality
+    ),
+    sex: isLocked(prevLocked.sex, prevForm.sex, nextForm.sex, extracted.sex ?? ''),
+    dateOfBirth: isLocked(
+      prevLocked.dateOfBirth,
+      prevForm.dateOfBirth,
+      nextForm.dateOfBirth,
+      extracted.dateOfBirth
+    ),
+    expiryDate: isLocked(
+      prevLocked.expiryDate,
+      prevForm.expiryDate,
+      nextForm.expiryDate,
+      extracted.expiryDate
+    ),
+    versionNumber: isLocked(
+      prevLocked.versionNumber,
+      prevForm.versionNumber,
+      nextForm.versionNumber,
+      extracted.versionNumber
+    ),
+    familyMembers: nextMemberLocks,
+  };
 }
 
 /**
