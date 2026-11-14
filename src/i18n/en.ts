@@ -5,7 +5,7 @@ export const en: TranslationKeys = {
   appSubtitle: 'Prepare your hotel registration details and send them directly to hotel WhatsApp',
   langToggle: 'العربية',
   clearMyData: 'Clear my data',
-  clearedSuccess: 'All photos and data have been cleared from this session.',
+  clearedSuccess: 'All data has been cleared from this session.',
 
   // Section 1: Hotel
   sectionHotelTitle: '1. Select Hotel',
@@ -15,25 +15,30 @@ export const en: TranslationKeys = {
   branchNotConfiguredBanner:
     'Reception WhatsApp number is not configured for this branch yet. Sending is disabled until configured in system settings.',
 
-  // Section 2: Document capture
-  sectionDocTitle: '2. Document Photo',
-  sectionDocDesc: 'Take a photo or upload your National ID, Iqama, Passport, or Family Register to extract visible details.',
+  // Section 2: Document reading
+  sectionDocTitle: '2. Read Document',
+  sectionDocDesc: 'Automatically extract details from your National ID, Iqama, Passport, or Family Register — or fill in the form manually below.',
+  docPlaceholderTitle: 'Instant text reading · Zero storage',
+  docPlaceholderDesc:
+    'Only visible text is read to pre-fill the form and immediately cleared from memory, without displaying or keeping any ID photo.',
+  docLoadedHiddenTitle: 'Ready for text-only reading',
+  docLoadedHiddenDesc: 'For your privacy, your ID image is not displayed on screen and no copy is kept.',
   frontSideLabel: 'Front side of document',
   backSideLabel: 'Back side or extra page (optional)',
-  takePhoto: 'Take a photo',
-  chooseFromGallery: 'Choose from gallery',
-  retakePhoto: 'Retake',
-  deletePhoto: 'Delete',
-  addBackSide: 'Add back side / extra page',
+  takePhoto: 'Read Document',
+  chooseFromGallery: 'Choose file from device',
+  retakePhoto: 'Read again',
+  deletePhoto: 'Remove',
+  addBackSide: 'Read back side / extra page',
   geminiPrivacyNotice:
-    'Privacy notice: Your document photo will be temporarily processed by Google Gemini to extract visible text only. Neither the photo nor the data is saved permanently.',
-  geminiConsentLabel: 'I agree to process this document photo with Google Gemini to extract visible details.',
-  analyzeNowButton: 'Read Document',
+    'Privacy notice: Only visible text is temporarily read to pre-fill the form. Your ID image is never displayed or saved permanently.',
+  geminiConsentLabel: 'I agree to automatically read document details to fill the form without saving the image.',
+  analyzeNowButton: 'Extract Details Now',
   readingDocument: 'Reading document...',
   readingComplete:
-    'Visible details extracted and the document photo was immediately cleared from memory. Please review and complete any missing fields below.',
+    'Visible details extracted and the file was immediately cleared from memory. Please review and complete any missing fields below.',
   readingFailedFallback:
-    'Could not read the document clearly. Please retake the photo in clearer lighting or fill in the fields manually below.',
+    'Could not read the document clearly. Please try again in clearer lighting or fill in the fields manually below.',
   authenticityDisclaimer:
     'Note: Automated extraction only helps pre-fill the form and does not verify document authenticity.',
   warningsTitle: 'Reading notes',
@@ -75,7 +80,7 @@ export const en: TranslationKeys = {
   fieldVersionNumber: 'Document version number',
   fieldVersionPlaceholder: '1 / 2',
   versionHelperText:
-    'Version number is required for National ID and Iqama. If not visible, enter it manually or add the back side photo.',
+    'Version number is required for National ID and Iqama. If not visible, enter it manually or read the back side.',
   fieldBorderNumber: 'Border number',
   fieldBorderPlaceholder: '30XXXXXXXX',
   borderHelperText: 'Note: Border number is different from your passport number and visa number.',
@@ -143,7 +148,7 @@ export const en: TranslationKeys = {
     'I confirm the accuracy of the details above and agree to share them with the selected hotel via WhatsApp for check-in registration.',
   sendToWhatsAppButton: 'Send to hotel WhatsApp',
   photoAttachInstruction:
-    'Your details will open in WhatsApp, and no copy of your photo is kept in the app. If reception requests your document photo, attach it directly from your device in the chat, then tap Send.',
+    'Your text details will open in WhatsApp for review and sending. No copy of your document image is kept in the app.',
   messageReadySuccess: 'Your message is ready. Complete sending in WhatsApp.',
   fallbackTitle: 'WhatsApp did not open automatically?',
   copyMessageButton: 'Copy message',

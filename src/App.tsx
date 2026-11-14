@@ -204,26 +204,25 @@ export default function App() {
     }
 
     const prepared = await prepareImageForUpload(file);
-    const previewUrl = URL.createObjectURL(file);
 
     const nextSlot: DocumentImageSlot = {
       id: slot,
       file,
-      previewUrl,
+      previewUrl: '',
       base64: prepared.base64,
       mimeType: prepared.mimeType,
     };
 
     if (slot === 'front') {
       if (frontUrlRef.current) URL.revokeObjectURL(frontUrlRef.current);
-      frontUrlRef.current = previewUrl;
+      frontUrlRef.current = null;
       setFrontImage(nextSlot);
       if (geminiConsent) {
         await runAnalysis(nextSlot, backImage, readSucceeded);
       }
     } else {
       if (backUrlRef.current) URL.revokeObjectURL(backUrlRef.current);
-      backUrlRef.current = previewUrl;
+      backUrlRef.current = null;
       setBackImage(nextSlot);
       if (geminiConsent && frontImage) {
         await runAnalysis(frontImage, nextSlot, readSucceeded);

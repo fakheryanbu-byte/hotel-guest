@@ -1,11 +1,12 @@
 import { useRef, type ChangeEvent } from 'react';
 import {
   AlertTriangle,
-  Camera,
   CheckCircle2,
-  ImagePlus,
+  FileCheck2,
+  FileUp,
   Loader2,
   RefreshCw,
+  ScanText,
   ShieldCheck,
   Trash2,
 } from 'lucide-react';
@@ -71,7 +72,7 @@ export function DocumentCapture({
         <p className="mt-1 text-sm text-[#685F58]">{t.sectionDocDesc}</p>
       </div>
 
-      {/* Privacy Notice & Gemini Consent BEFORE Processing */}
+      {/* Privacy Notice & Consent BEFORE Processing */}
       <div className="mb-4 rounded-2xl border border-[#2C2C2C]/10 bg-[#F4EFEA] p-3.5">
         <div className="flex items-start gap-2.5 text-xs text-[#685F58] sm:text-sm">
           <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-[#8C5338]" aria-hidden="true" />
@@ -134,33 +135,66 @@ export function DocumentCapture({
         </div>
 
         {!frontImage ? (
-          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-            <button
-              type="button"
-              onClick={() => frontCameraRef.current?.click()}
-              className="flex min-h-[52px] items-center justify-center gap-2.5 rounded-2xl bg-[#2C2C2C] px-4 py-3 text-sm font-semibold text-[#FAF7F2] transition-all hover:bg-[#2C2C2C]/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C58B6D] active:scale-[0.99]"
-            >
-              <Camera className="h-5 w-5 text-[#E8A588]" aria-hidden="true" />
-              <span>{t.takePhoto}</span>
-            </button>
+          <div className="space-y-3">
+            {/* Reassuring Non-Photographic Suggestion Card (no ID photo shown) */}
+            <div className="rounded-2xl border border-[#C58B6D]/30 bg-gradient-to-br from-[#F4EFEA] to-[#FAF7F2] p-4">
+              <div className="flex items-start gap-3">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#E8A588]/25 text-[#8C5338]">
+                  <ScanText className="h-5 w-5" aria-hidden="true" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="m-0 text-sm font-bold text-[#2C2C2C]">
+                    {t.docPlaceholderTitle}
+                  </p>
+                  <p className="m-0 mt-1 text-xs leading-relaxed text-[#685F58]">
+                    {t.docPlaceholderDesc}
+                  </p>
+                </div>
+              </div>
 
-            <button
-              type="button"
-              onClick={() => frontGalleryRef.current?.click()}
-              className="flex min-h-[52px] items-center justify-center gap-2.5 rounded-2xl border border-[#2C2C2C]/20 bg-[#F4EFEA] px-4 py-3 text-sm font-semibold text-[#2C2C2C] transition-all hover:bg-[#E8A588]/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C58B6D] active:scale-[0.99]"
-            >
-              <ImagePlus className="h-5 w-5 text-[#8C5338]" aria-hidden="true" />
-              <span>{t.chooseFromGallery}</span>
-            </button>
+              {/* Abstract text-extraction graphic (no ID card or camera imagery) */}
+              <div className="mt-3.5 space-y-1.5 rounded-xl border border-[#2C2C2C]/8 bg-[#FAF7F2]/90 p-3" aria-hidden="true">
+                <div className="h-2 w-2/3 rounded-full bg-[#C58B6D]/35" />
+                <div className="h-2 w-1/2 rounded-full bg-[#2C2C2C]/12" />
+                <div className="h-2 w-3/5 rounded-full bg-[#2C2C2C]/10" />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={() => frontCameraRef.current?.click()}
+                className="flex min-h-[52px] items-center justify-center gap-2.5 rounded-2xl bg-[#2C2C2C] px-4 py-3 text-sm font-semibold text-[#FAF7F2] transition-all hover:bg-[#2C2C2C]/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C58B6D] active:scale-[0.99]"
+              >
+                <ScanText className="h-5 w-5 text-[#E8A588]" aria-hidden="true" />
+                <span>{t.takePhoto}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => frontGalleryRef.current?.click()}
+                className="flex min-h-[52px] items-center justify-center gap-2.5 rounded-2xl border border-[#2C2C2C]/20 bg-[#F4EFEA] px-4 py-3 text-sm font-semibold text-[#2C2C2C] transition-all hover:bg-[#E8A588]/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C58B6D] active:scale-[0.99]"
+              >
+                <FileUp className="h-5 w-5 text-[#8C5338]" aria-hidden="true" />
+                <span>{t.chooseFromGallery}</span>
+              </button>
+            </div>
           </div>
         ) : (
           <div className="space-y-3">
-            <div className="overflow-hidden rounded-2xl border border-[#2C2C2C]/10 bg-[#F4EFEA]">
-              <img
-                src={frontImage.previewUrl}
-                alt={t.frontSideLabel}
-                className="max-h-72 w-full object-contain"
-              />
+            {/* Privacy-safe card: never display raw ID photo on screen */}
+            <div className="flex items-start gap-3 rounded-2xl border border-[#C58B6D]/35 bg-[#F4EFEA] p-4">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#E8A588]/25 text-[#8C5338]">
+                <FileCheck2 className="h-5 w-5" aria-hidden="true" />
+              </div>
+              <div className="min-w-0">
+                <p className="m-0 text-sm font-bold text-[#2C2C2C]">
+                  {t.docLoadedHiddenTitle}
+                </p>
+                <p className="m-0 mt-1 text-xs leading-relaxed text-[#685F58]">
+                  {t.docLoadedHiddenDesc}
+                </p>
+              </div>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
@@ -180,7 +214,7 @@ export function DocumentCapture({
                 disabled={isReading}
                 className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border border-[#2C2C2C]/15 bg-[#F4EFEA] px-3.5 py-2 text-xs font-semibold text-[#2C2C2C] transition-colors hover:bg-[#E8A588]/20 disabled:opacity-50"
               >
-                <ImagePlus className="h-4 w-4" aria-hidden="true" />
+                <FileUp className="h-4 w-4" aria-hidden="true" />
                 <span>{t.chooseFromGallery}</span>
               </button>
 
@@ -213,7 +247,7 @@ export function DocumentCapture({
                 disabled={isReading}
                 className="inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-dashed border-[#C58B6D] bg-[#F4EFEA]/70 px-4 py-2 text-xs font-semibold text-[#2C2C2C] transition-colors hover:bg-[#E8A588]/20 disabled:opacity-50"
               >
-                <Camera className="h-4 w-4 text-[#8C5338]" aria-hidden="true" />
+                <ScanText className="h-4 w-4 text-[#8C5338]" aria-hidden="true" />
                 <span>{t.addBackSide}</span>
               </button>
               <button
@@ -222,18 +256,24 @@ export function DocumentCapture({
                 disabled={isReading}
                 className="inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-[#2C2C2C]/15 bg-[#F4EFEA]/70 px-4 py-2 text-xs font-semibold text-[#2C2C2C] transition-colors hover:bg-[#E8A588]/20 disabled:opacity-50"
               >
-                <ImagePlus className="h-4 w-4 text-[#8C5338]" aria-hidden="true" />
+                <FileUp className="h-4 w-4 text-[#8C5338]" aria-hidden="true" />
                 <span>{t.chooseFromGallery}</span>
               </button>
             </div>
           ) : (
             <div className="space-y-3">
-              <div className="overflow-hidden rounded-2xl border border-[#2C2C2C]/10 bg-[#F4EFEA]">
-                <img
-                  src={backImage.previewUrl}
-                  alt={t.backSideLabel}
-                  className="max-h-56 w-full object-contain"
-                />
+              <div className="flex items-start gap-3 rounded-2xl border border-[#C58B6D]/35 bg-[#F4EFEA] p-3.5">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#E8A588]/25 text-[#8C5338]">
+                  <FileCheck2 className="h-4 w-4" aria-hidden="true" />
+                </div>
+                <div className="min-w-0">
+                  <p className="m-0 text-xs font-bold text-[#2C2C2C]">
+                    {t.docLoadedHiddenTitle}
+                  </p>
+                  <p className="m-0 mt-0.5 text-xs text-[#685F58]">
+                    {t.docLoadedHiddenDesc}
+                  </p>
+                </div>
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <button
@@ -260,7 +300,7 @@ export function DocumentCapture({
         </div>
       )}
 
-      {/* Manual trigger if image was selected before consent or user wants to re-read */}
+      {/* Manual trigger if file was selected before consent or user wants to re-read */}
       {frontImage && !isReading && (
         <div className="mt-4">
           <button
