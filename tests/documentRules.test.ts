@@ -8,6 +8,7 @@ import {
   buildWhatsAppUrl,
   createEmptyGuestForm,
   getFieldVisibility,
+  isMemberUnder18,
   isValidMobileNumber,
   normalizeDateInput,
   normalizeMobileInput,
@@ -458,5 +459,158 @@ describe('Hotel branch configuration, Visit Purpose, Language, and Sharing', () 
     expect(valid.canOpenWhatsApp).toBe(true);
     const msg = buildWhatsAppMessage(withCompanionDob, SYNTHETIC_HOTEL);
     expect(msg).toContain('DOB: 1439/04/12 (هجري / Hijri)');
+  });
+
+  it('orders cardholder first, appends back-page members in sequence, and restricts primary selection for under-18 members', () => {
+    // Page 1: cardholder in top-level fields, plus member 1 and member 2
+    const page1 = applyExtractedDataToForm(createEmptyGuestForm(), {
+      documentType: 'family_register',
+      fullName: 'سعد بن محمد القحطاني',
+      nameParts: { firstName: 'سعد', fatherName: 'محمد', grandfatherName: null, familyName: 'القحطاني' },
+      documentNumber: '1010101010',
+      nationality: 'سعودي',
+      sex: 'male',
+      dateOfBirth: '1400/01/10',
+      birthCalendar: 'hijri',
+      expiryDate: null,
+      expiryCalendar: 'unknown',
+      versionNumber: null,
+      familyMembers: [
+        {
+          fullName: 'نورة القحطاني',
+          documentNumber: '1020202020',
+          sex: 'female',
+          dateOfBirth: '1405/03/15',
+          birthCalendar: 'hijri',
+          relationship: 'زوجة',
+        },
+        {
+          fullName: 'خالد سعد القحطاني',
+          documentNumber: '1133445566',
+          sex: 'male',
+          dateOfBirth: '1438/05/01',
+          birthCalendar: 'hijri',
+          relationship: 'ابن',
+        },
+      ],
+      unreadableFields: [],
+      warnings: [],
+    });
+
+    // Cardholder automatically prepended at index 0, followed by 1 and 2
+    expect(page1.familyMembers.map((m) => m.fullName)).toEqual([
+      'سعد بن محمد القحطاني',
+      'نورة القحطاني',
+      'خالد سعد القحطاني',
+    ]);
+    expect(page1.primaryMemberId).toBe('member_1');
+
+    // Page 2 (back side): appends member 3 after existing members without overwriting front page
+    const withBackPage = applyExtractedDataToForm(
+      page1,
+      {
+        documentType: 'family_register',
+        fullName: null,
+        nameParts: { firstName: null, fatherName: null, grandfatherName: null, familyName: null },
+        documentNumber: null,
+        nationality: null,
+        sex: null,
+        dateOfBirth: null,
+        birthCalendar: 'unknown',
+        expiryDate: null,
+        expiryCalendar: 'unknown',
+        versionNumber: null,
+        familyMembers: [
+          {
+            fullName: 'سارة سعد القحطاني',
+            documentNumber: '1144556677',
+            sex: 'female',
+            dateOfBirth: '2016-06-10',
+            birthCalendar: 'gregorian',
+            relationship: 'بنت',
+          },
+        ],
+        unreadableFields: [],
+        warnings: [],
+      },
+      true
+    );
+
+    expect(withBackPage.familyMembers.map((m) => m.fullName)).toEqual([
+      'سعد بن محمد القحطاني',
+      'نورة القحطاني',
+      'خالد سعد القحطاني',
+      'سارة سعد القحطاني',
+    ]);
+
+    // Check age restriction: member_3 (Hijri 1438) & member_4 (Gregorian 2016) are under 18
+    const refDate = new Date(Date.UTC(2026, 10, 14));
+    expect(isMemberUnder18(withBackPage.familyMembers[0], refDate)).toBe(false);
+    expect(isMemberUnder18(withBackPage.familyMembers[1], refDate)).toBe(false);
+    expect(isMemberUnder18(withBackPage.familyMembers[2], refDate)).toBe(true);
+    expect(isMemberUnder18(withBackPage.familyMembers[3], refDate)).toBe(true);
+
+    // Selecting under-18 member as primary must be ignored
+    const afterMinorClick = selectPrimaryFamilyMember(withBackPage, 'member_3');
+    expect(afterMinorClick.primaryMemberId).toBe('member_1');
+
+    // Selecting adult spouse (18+) as primary is allowed
+    const afterAdultClick = selectPrimaryFamilyMember(withBackPage, 'member_2');
+    expect(afterAdultClick.primaryMemberId).toBe('member_2');
+    expect(afterAdultClick.fullName).toBe('نورة القحطاني');
+  });
+
+  it('deduplicates slightly different name variants of the cardholder and duplicate member entries', () => {
+    const form = applyExtractedDataToForm(createEmptyGuestForm(), {
+      documentType: 'family_register',
+      fullName: 'عبدالرحيم بن علي بن سعيد القرشي المالكي',
+      nameParts: {
+        firstName: 'عبدالرحيم',
+        fatherName: 'علي',
+        grandfatherName: 'سعيد',
+        familyName: 'المالكي',
+      },
+      documentNumber: '1008592030',
+      nationality: null,
+      sex: 'male',
+      dateOfBirth: '1402/06/29',
+      birthCalendar: 'hijri',
+      expiryDate: null,
+      expiryCalendar: 'unknown',
+      versionNumber: null,
+      familyMembers: [
+        {
+          fullName: 'عبدالرحيم بن علي بن سعيد القرشي',
+          documentNumber: '',
+          sex: 'male',
+          dateOfBirth: '1402/06/29',
+          birthCalendar: 'hijri',
+          relationship: 'صاحب السجل',
+        },
+        {
+          fullName: 'عبدالرحيم بن علي بن سعيد القرشي المالكي',
+          documentNumber: '1008592030',
+          sex: 'male',
+          dateOfBirth: '1402/06/29',
+          birthCalendar: 'hijri',
+          relationship: 'صاحب السجل',
+        },
+        {
+          fullName: 'أمل ضيف الله محمد المالكي',
+          documentNumber: '1001352465',
+          sex: 'female',
+          dateOfBirth: '1399/07/01',
+          birthCalendar: 'hijri',
+          relationship: 'زوجة',
+        },
+      ],
+      unreadableFields: [],
+      warnings: [],
+    });
+
+    expect(form.familyMembers).toHaveLength(2);
+    expect(form.familyMembers[0].fullName).toBe('عبدالرحيم بن علي بن سعيد القرشي المالكي');
+    expect(form.familyMembers[0].documentNumber).toBe('1008592030');
+    expect(form.familyMembers[1].fullName).toBe('أمل ضيف الله محمد المالكي');
   });
 });

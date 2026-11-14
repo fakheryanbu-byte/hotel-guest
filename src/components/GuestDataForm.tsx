@@ -1,4 +1,4 @@
-import { AlertCircle, Plus, Trash2, UserCheck, Users } from 'lucide-react';
+import { AlertCircle, Check, Plus, Trash2, UserCheck, Users } from 'lucide-react';
 import type { TranslationKeys } from '../i18n/ar';
 import type {
   CalendarType,
@@ -9,10 +9,12 @@ import type {
 } from '../types/guest';
 import {
   getFieldVisibility,
+  isMemberUnder18,
   normalizeDateInput,
   normalizeMobileInput,
   toAsciiDigits,
 } from '../utils/documentRules';
+import { DateWheelPicker } from './DateWheelPicker';
 
 interface GuestDataFormProps {
   form: GuestFormData;
@@ -41,12 +43,10 @@ export function GuestDataForm({
 }: GuestDataFormProps) {
   const vis = getFieldVisibility(form.documentType);
 
-  const hasNameParts = Boolean(
-    form.nameParts.firstName ||
-      form.nameParts.fatherName ||
-      form.nameParts.grandfatherName ||
-      form.nameParts.familyName
-  );
+  const hasActivePrimaryMemberCard =
+    vis.showFamilyMembers &&
+    form.familyMembers.length > 0 &&
+    Boolean(form.primaryMemberId);
 
   const inputClass = (fieldKey: string) =>
     `min-h-[48px] w-full rounded-xl border px-3.5 py-2.5 text-sm text-[#2C2C2C] transition-colors focus:outline-none focus:ring-2 focus:ring-[#C58B6D] ${
@@ -105,14 +105,11 @@ export function GuestDataForm({
         {/* Family Register Member Selection */}
         {vis.showFamilyMembers && (
           <div className="border-y border-[#2C2C2C]/10 py-4">
-            <div className="mb-3 flex items-start justify-between gap-2">
-              <div>
-                <h3 className="flex items-center gap-2 text-base font-bold text-[#2C2C2C]">
-                  <Users className="h-4 w-4 text-[#8C5338]" aria-hidden="true" />
-                  <span>{t.familySectionTitle}</span>
-                </h3>
-                <p className="mt-1 text-xs text-[#685F58]">{t.familySectionNote}</p>
-              </div>
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <h3 className="flex items-center gap-2 text-base font-bold text-[#2C2C2C]">
+                <Users className="h-4 w-4 text-[#8C5338]" aria-hidden="true" />
+                <span>{t.familySectionTitle}</span>
+              </h3>
               <button
                 type="button"
                 onClick={onAddFamilyMember}
@@ -129,36 +126,70 @@ export function GuestDataForm({
               </p>
             ) : (
               <div className="divide-y divide-[#2C2C2C]/10">
-                {form.familyMembers.map((member) => {
+                {form.familyMembers.map((member, index) => {
                   const isPrimary = form.primaryMemberId === member.id;
                   const isAccompanying =
                     !isPrimary && form.accompanyingMemberIds.includes(member.id);
+                  const under18 = isMemberUnder18(member);
+                  const orderLabel =
+                    index === 0 ? t.familyCardholderBadge : `(${index})`;
 
                   return (
-                    <div key={member.id} className="space-y-2.5 py-3 first:pt-0 last:pb-0">
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => onSelectPrimaryMember(member.id)}
-                            className={`inline-flex min-h-[44px] items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold transition-colors ${
-                              isPrimary
-                                ? 'bg-[#2C2C2C] text-[#FAF7F2]'
-                                : 'border border-[#2C2C2C]/15 bg-[#F4EFEA] text-[#2C2C2C] hover:bg-[#E8A588]/25'
-                            }`}
-                          >
-                            <UserCheck className="h-3.5 w-3.5" aria-hidden="true" />
-                            <span>{isPrimary ? t.familyIsPrimary : t.familySelectPrimary}</span>
-                          </button>
+                    <div
+                      key={member.id}
+                      className={`space-y-2.5 py-3.5 first:pt-0 last:pb-0 ${
+                        isAccompanying ? 'rounded-2xl bg-[#2E6B47]/[0.05] px-3 my-1' : ''
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-1.5">
+                        <div className="flex min-w-0 items-center gap-1.5 overflow-x-auto wheel-scrollbar-hidden">
+                          <span className="inline-flex min-h-[36px] shrink-0 items-center whitespace-nowrap rounded-lg bg-[#2C2C2C]/8 px-2 py-1 text-[11px] font-bold text-[#2C2C2C]">
+                            {orderLabel}
+                          </span>
+
+                          {!under18 ? (
+                            <button
+                              type="button"
+                              onClick={() => onSelectPrimaryMember(member.id)}
+                              className={`inline-flex min-h-[40px] shrink-0 items-center gap-1 whitespace-nowrap rounded-xl px-2.5 py-1.5 text-[11px] font-semibold transition-colors sm:px-3 sm:text-xs ${
+                                isPrimary
+                                  ? 'bg-[#2C2C2C] text-[#FAF7F2]'
+                                  : 'border border-[#2C2C2C]/15 bg-[#F4EFEA] text-[#2C2C2C] hover:bg-[#E8A588]/25'
+                              }`}
+                            >
+                              <UserCheck className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                              <span>{isPrimary ? t.familyIsPrimary : t.familySelectPrimary}</span>
+                            </button>
+                          ) : (
+                            <span className="inline-flex min-h-[40px] shrink-0 items-center whitespace-nowrap rounded-xl border border-[#2C2C2C]/10 bg-[#F4EFEA] px-2.5 py-1.5 text-[11px] font-semibold text-[#685F58] sm:text-xs">
+                              {t.familyUnder18Badge}
+                            </span>
+                          )}
 
                           {!isPrimary && (
-                            <label className="inline-flex min-h-[44px] cursor-pointer items-center gap-2 rounded-xl border border-[#2C2C2C]/15 bg-[#F4EFEA]/70 px-3 py-2 text-xs font-semibold text-[#2C2C2C]">
+                            <label
+                              className={`inline-flex min-h-[40px] shrink-0 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-xl border px-2.5 py-1.5 text-[11px] font-semibold transition-colors sm:px-3 sm:text-xs ${
+                                isAccompanying
+                                  ? 'border-[#2E6B47] bg-[#2E6B47]/12 text-[#2C2C2C]'
+                                  : 'border-[#2C2C2C]/15 bg-[#F4EFEA]/70 text-[#2C2C2C] hover:bg-[#E8A588]/15'
+                              }`}
+                            >
                               <input
                                 type="checkbox"
                                 checked={isAccompanying}
                                 onChange={() => onToggleAccompanyingMember(member.id)}
-                                className="h-4 w-4 accent-[#C58B6D]"
+                                className="sr-only"
                               />
+                              <span
+                                className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
+                                  isAccompanying
+                                    ? 'border-[#2E6B47] bg-[#2E6B47] text-[#FAF7F2]'
+                                    : 'border-[#2C2C2C]/30 bg-[#FFFFFF] text-transparent'
+                                }`}
+                                aria-hidden="true"
+                              >
+                                <Check className="h-3 w-3 stroke-[3]" />
+                              </span>
                               <span>{t.familyAccompanying}</span>
                             </label>
                           )}
@@ -167,14 +198,21 @@ export function GuestDataForm({
                         <button
                           type="button"
                           onClick={() => onRemoveFamilyMember(member.id)}
-                          className="inline-flex min-h-[44px] items-center gap-1 rounded-xl px-2.5 py-2 text-xs font-medium text-[#9E3B33] hover:bg-[#9E3B33]/10"
+                          className="inline-flex min-h-[40px] shrink-0 items-center gap-1 whitespace-nowrap rounded-xl px-2 py-1.5 text-[11px] font-medium text-[#9E3B33] hover:bg-[#9E3B33]/10 sm:text-xs"
                         >
-                          <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                          <Trash2 className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                           <span>{t.familyRemoveMember}</span>
                         </button>
                       </div>
 
-                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                      {/* Row 1: Full Name + Relationship in one unified box with divider */}
+                      <div
+                        className={`flex items-stretch overflow-hidden rounded-xl border transition-colors ${
+                          (isPrimary || isAccompanying) && !member.fullName.trim()
+                            ? 'border-[#C58B6D] bg-[#E8A588]/15'
+                            : 'border-[#2C2C2C]/15 bg-[#FFFFFF]'
+                        }`}
+                      >
                         <input
                           type="text"
                           value={member.fullName}
@@ -182,24 +220,10 @@ export function GuestDataForm({
                             onUpdateFamilyMember(member.id, { fullName: e.target.value })
                           }
                           placeholder={t.familyMemberName}
-                          className={`min-h-[44px] rounded-xl border px-3 py-2 text-xs text-[#2C2C2C] ${
-                            isAccompanying && !member.fullName.trim()
-                              ? 'border-[#C58B6D] bg-[#E8A588]/15'
-                              : 'border-[#2C2C2C]/15 bg-[#FFFFFF]'
-                          }`}
+                          aria-label={t.familyMemberName}
+                          className="min-h-[44px] min-w-0 flex-1 bg-transparent px-3 py-2 text-xs font-medium text-[#2C2C2C] placeholder:text-[#685F58]/70 focus:outline-none"
                         />
-                        <input
-                          type="text"
-                          dir="ltr"
-                          value={member.documentNumber}
-                          onChange={(e) =>
-                            onUpdateFamilyMember(member.id, {
-                              documentNumber: toAsciiDigits(e.target.value),
-                            })
-                          }
-                          placeholder={t.familyMemberDocNum}
-                          className="ltr-field tabular-nums min-h-[44px] rounded-xl border border-[#2C2C2C]/15 bg-[#FFFFFF] px-3 py-2 text-xs text-[#2C2C2C]"
-                        />
+                        <div className="w-px self-stretch bg-[#2C2C2C]/15" aria-hidden="true" />
                         <input
                           type="text"
                           value={member.relationship}
@@ -207,78 +231,149 @@ export function GuestDataForm({
                             onUpdateFamilyMember(member.id, { relationship: e.target.value })
                           }
                           placeholder={t.familyMemberRelation}
-                          className="min-h-[44px] rounded-xl border border-[#2C2C2C]/15 bg-[#FFFFFF] px-3 py-2 text-xs text-[#2C2C2C]"
+                          aria-label={t.familyMemberRelation}
+                          className="min-h-[44px] w-[96px] shrink-0 bg-transparent px-2.5 py-2 text-center text-xs text-[#685F58] placeholder:text-[#685F58]/70 focus:outline-none sm:w-[128px]"
                         />
                       </div>
 
-                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                        <div>
-                          <div className="mb-1 flex items-center justify-between gap-2">
-                            <span className="text-[11px] font-semibold text-[#685F58]">
-                              {t.familyMemberDob}
-                              {isAccompanying && (
-                                <span className="ms-1 text-[#8C5338]">{t.requiredMark}</span>
-                              )}
-                            </span>
-                            {isAccompanying && !member.dateOfBirth.trim() && (
-                              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#8C5338]">
-                                <AlertCircle className="h-3 w-3" aria-hidden="true" />
-                                <span>{t.missingBadge}</span>
-                              </span>
-                            )}
-                          </div>
-                          <input
-                            type="text"
-                            dir="ltr"
-                            value={member.dateOfBirth}
-                            onChange={(e) =>
-                              onUpdateFamilyMember(member.id, {
-                                dateOfBirth: toAsciiDigits(e.target.value),
-                              })
-                            }
-                            onBlur={() => {
-                              const { formatted, inferredCalendar } = normalizeDateInput(
-                                member.dateOfBirth
-                              );
-                              const patch: Partial<FamilyMember> = {};
-                              if (formatted !== member.dateOfBirth) {
-                                patch.dateOfBirth = formatted;
-                              }
-                              if (member.birthCalendar === 'unknown' && inferredCalendar) {
-                                patch.birthCalendar = inferredCalendar;
-                              }
-                              if (Object.keys(patch).length > 0) {
-                                onUpdateFamilyMember(member.id, patch);
-                              }
-                            }}
-                            placeholder={t.fieldDatePlaceholder}
-                            className={`ltr-field tabular-nums min-h-[44px] w-full rounded-xl border px-3 py-2 text-xs text-[#2C2C2C] ${
-                              isAccompanying && !member.dateOfBirth.trim()
+                      {index === 0 ? (
+                        <>
+                          {/* Cardholder ID Number above DateWheelPicker */}
+                          <div
+                            className={`overflow-hidden rounded-xl border transition-colors ${
+                              isPrimary && !member.documentNumber.trim()
                                 ? 'border-[#C58B6D] bg-[#E8A588]/15'
                                 : 'border-[#2C2C2C]/15 bg-[#FFFFFF]'
                             }`}
-                          />
-                        </div>
+                          >
+                            <input
+                              type="text"
+                              dir="ltr"
+                              value={member.documentNumber}
+                              onChange={(e) =>
+                                onUpdateFamilyMember(member.id, {
+                                  documentNumber: toAsciiDigits(e.target.value),
+                                })
+                              }
+                              placeholder={t.familyMemberDocNum}
+                              aria-label={t.familyMemberDocNum}
+                              className="ltr-field tabular-nums min-h-[44px] w-full bg-transparent px-3 py-2 text-xs text-[#2C2C2C] placeholder:text-[#685F58]/70 focus:outline-none"
+                            />
+                          </div>
 
-                        <div>
-                          <span className="mb-1 block text-[11px] font-semibold text-[#685F58]">
-                            {t.fieldCalendar}
-                          </span>
-                          <select
-                            value={member.birthCalendar}
-                            onChange={(e) =>
+                          <DateWheelPicker
+                            value={member.dateOfBirth}
+                            calendar={member.birthCalendar}
+                            defaultCalendar="hijri"
+                            dobMissing={(isPrimary || isAccompanying) && !member.dateOfBirth.trim()}
+                            calendarMissing={isPrimary && member.birthCalendar === 'unknown'}
+                            dobLabel={t.familyMemberDob}
+                            calendarLabel={t.fieldCalendar}
+                            requiredMark={isPrimary || isAccompanying ? t.requiredMark : ''}
+                            missingBadge={t.missingBadge}
+                            onChange={(formattedDate, nextCal) =>
                               onUpdateFamilyMember(member.id, {
-                                birthCalendar: e.target.value as CalendarType,
+                                dateOfBirth: formattedDate,
+                                birthCalendar: nextCal,
                               })
                             }
-                            className="min-h-[44px] w-full rounded-xl border border-[#2C2C2C]/15 bg-[#FFFFFF] px-3 py-2 text-xs text-[#2C2C2C]"
+                            t={t}
+                          />
+                        </>
+                      ) : (
+                        /* Row 2 for dependents: Date of Birth + Record Number on the same line with divider */
+                        <div
+                          className={`flex items-stretch overflow-hidden rounded-xl border bg-[#FFFFFF] transition-colors ${
+                            ((isPrimary || isAccompanying) && !member.dateOfBirth.trim()) ||
+                            (isPrimary && !member.documentNumber.trim())
+                              ? 'border-[#C58B6D]'
+                              : 'border-[#2C2C2C]/15'
+                          }`}
+                        >
+                          <div
+                            className={`flex min-w-0 flex-1 flex-col justify-center px-3 py-1.5 ${
+                              (isPrimary || isAccompanying) && !member.dateOfBirth.trim()
+                                ? 'bg-[#E8A588]/15'
+                                : ''
+                            }`}
                           >
-                            <option value="unknown">{t.calendarSelect}</option>
-                            <option value="hijri">{t.calendarHijri}</option>
-                            <option value="gregorian">{t.calendarGregorian}</option>
-                          </select>
+                            <div className="flex items-center justify-between gap-1">
+                              <span className="text-[10px] font-semibold text-[#685F58]">
+                                {t.fieldDateOfBirth}
+                                {(isPrimary || isAccompanying) && (
+                                  <span className="ms-0.5 text-[#8C5338]">{t.requiredMark}</span>
+                                )}
+                              </span>
+                              {(isPrimary || isAccompanying) && !member.dateOfBirth.trim() && (
+                                <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-[#8C5338]">
+                                  <AlertCircle className="h-2.5 w-2.5" aria-hidden="true" />
+                                  <span>{t.missingBadge}</span>
+                                </span>
+                              )}
+                            </div>
+                            <input
+                              type="text"
+                              dir="ltr"
+                              value={member.dateOfBirth}
+                              onChange={(e) => {
+                                const nextDob = toAsciiDigits(e.target.value);
+                                const { inferredCalendar } = normalizeDateInput(nextDob);
+                                const patch: Partial<FamilyMember> = { dateOfBirth: nextDob };
+                                if (inferredCalendar) {
+                                  patch.birthCalendar = inferredCalendar;
+                                }
+                                onUpdateFamilyMember(member.id, patch);
+                              }}
+                              onBlur={() => {
+                                const { formatted, inferredCalendar } = normalizeDateInput(
+                                  member.dateOfBirth
+                                );
+                                const patch: Partial<FamilyMember> = {};
+                                if (formatted !== member.dateOfBirth) {
+                                  patch.dateOfBirth = formatted;
+                                }
+                                if (inferredCalendar) {
+                                  patch.birthCalendar = inferredCalendar;
+                                }
+                                if (Object.keys(patch).length > 0) {
+                                  onUpdateFamilyMember(member.id, patch);
+                                }
+                              }}
+                              placeholder={t.fieldDatePlaceholder}
+                              aria-label={t.familyMemberDob}
+                              className="ltr-field tabular-nums min-h-[28px] w-full bg-transparent text-xs font-medium text-[#2C2C2C] placeholder:text-[#685F58]/60 focus:outline-none"
+                            />
+                          </div>
+
+                          <div className="w-px self-stretch bg-[#2C2C2C]/15" aria-hidden="true" />
+
+                          <div
+                            className={`flex min-w-0 flex-1 flex-col justify-center px-3 py-1.5 ${
+                              isPrimary && !member.documentNumber.trim() ? 'bg-[#E8A588]/15' : ''
+                            }`}
+                          >
+                            <span className="text-[10px] font-semibold text-[#685F58]">
+                              {t.familyMemberDocNum}
+                              {isPrimary && (
+                                <span className="ms-0.5 text-[#8C5338]">{t.requiredMark}</span>
+                              )}
+                            </span>
+                            <input
+                              type="text"
+                              dir="ltr"
+                              value={member.documentNumber}
+                              onChange={(e) =>
+                                onUpdateFamilyMember(member.id, {
+                                  documentNumber: toAsciiDigits(e.target.value),
+                                })
+                              }
+                              placeholder={t.fieldDocumentNumberPlaceholder}
+                              aria-label={t.familyMemberDocNum}
+                              className="ltr-field tabular-nums min-h-[28px] w-full bg-transparent text-xs font-medium text-[#2C2C2C] placeholder:text-[#685F58]/60 focus:outline-none"
+                            />
+                          </div>
                         </div>
-                      </div>
+                      )}
                     </div>
                   );
                 })}
@@ -287,198 +382,150 @@ export function GuestDataForm({
           </div>
         )}
 
-        {/* Full Name */}
-        <div>
-          {renderLabel(t.fieldFullName, 'fullName', true)}
-          <input
-            type="text"
-            value={form.fullName}
-            onChange={(e) => onChangeField('fullName', e.target.value)}
-            placeholder={t.fieldFullNamePlaceholder}
-            className={inputClass('fullName')}
-          />
-        </div>
-
-        {/* Optional Extracted Name Parts (never enforced if absent) */}
-        {hasNameParts && (
-          <div className="rounded-2xl border border-[#2C2C2C]/10 bg-[#F4EFEA]/70 p-3">
-            <div className="mb-2 text-xs font-semibold text-[#685F58]">
-              {t.fieldNamePartsTitle}
-            </div>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-              {form.nameParts.firstName && (
-                <div>
-                  <span className="block text-[11px] text-[#685F58]">{t.fieldFirstName}</span>
-                  <span className="text-xs font-semibold text-[#2C2C2C]">
-                    {form.nameParts.firstName}
-                  </span>
-                </div>
-              )}
-              {form.nameParts.fatherName && (
-                <div>
-                  <span className="block text-[11px] text-[#685F58]">{t.fieldFatherName}</span>
-                  <span className="text-xs font-semibold text-[#2C2C2C]">
-                    {form.nameParts.fatherName}
-                  </span>
-                </div>
-              )}
-              {form.nameParts.grandfatherName && (
-                <div>
-                  <span className="block text-[11px] text-[#685F58]">{t.fieldGrandfatherName}</span>
-                  <span className="text-xs font-semibold text-[#2C2C2C]">
-                    {form.nameParts.grandfatherName}
-                  </span>
-                </div>
-              )}
-              {form.nameParts.familyName && (
-                <div>
-                  <span className="block text-[11px] text-[#685F58]">{t.fieldFamilyName}</span>
-                  <span className="text-xs font-semibold text-[#2C2C2C]">
-                    {form.nameParts.familyName}
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Document Number + Nationality */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div>
-            {renderLabel(t.fieldDocumentNumber, 'documentNumber', true)}
-            <input
-              type="text"
-              dir="ltr"
-              inputMode="text"
-              value={form.documentNumber}
-              onChange={(e) => onChangeField('documentNumber', toAsciiDigits(e.target.value))}
-              placeholder={t.fieldDocumentNumberPlaceholder}
-              className={`${inputClass('documentNumber')} ltr-field tabular-nums`}
-            />
-          </div>
-
-          <div>
-            {renderLabel(t.fieldNationality, 'nationality', true)}
-            <input
-              type="text"
-              value={form.nationality}
-              onChange={(e) => onChangeField('nationality', e.target.value)}
-              placeholder={t.fieldNationalityPlaceholder}
-              className={inputClass('nationality')}
-            />
-          </div>
-        </div>
-
-        {/* Sex + Date of Birth + Calendar */}
-        <div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        {!hasActivePrimaryMemberCard && (
+          <>
+            {/* Full Name */}
             <div>
-              {renderLabel(t.fieldSex, 'sex', false)}
-              <select
-                value={form.sex}
-                onChange={(e) => onChangeField('sex', e.target.value as SexType)}
-                className={inputClass('sex')}
-              >
-                <option value="">{t.sexSelect}</option>
-                <option value="male">{t.sexMale}</option>
-                <option value="female">{t.sexFemale}</option>
-              </select>
-            </div>
-
-            <div>
-              {renderLabel(t.fieldDateOfBirth, 'dateOfBirth', true)}
+              {renderLabel(t.fieldFullName, 'fullName', true)}
               <input
                 type="text"
-                dir="ltr"
-                value={form.dateOfBirth}
-                onChange={(e) => onChangeField('dateOfBirth', toAsciiDigits(e.target.value))}
-                onBlur={() => {
-                  const { formatted, inferredCalendar } = normalizeDateInput(form.dateOfBirth);
-                  if (formatted !== form.dateOfBirth) {
-                    onChangeField('dateOfBirth', formatted);
-                  }
-                  if (form.birthCalendar === 'unknown' && inferredCalendar) {
-                    onChangeField('birthCalendar', inferredCalendar);
-                  }
-                }}
-                placeholder={t.fieldDatePlaceholder}
-                className={`${inputClass('dateOfBirth')} ltr-field tabular-nums`}
+                value={form.fullName}
+                onChange={(e) => onChangeField('fullName', e.target.value)}
+                placeholder={t.fieldFullNamePlaceholder}
+                className={inputClass('fullName')}
               />
             </div>
 
-            <div>
-              {renderLabel(t.fieldCalendar, 'birthCalendar', true)}
-              <select
-                value={form.birthCalendar}
-                onChange={(e) =>
-                  onChangeField('birthCalendar', e.target.value as CalendarType)
-                }
-                className={inputClass('birthCalendar')}
-              >
-                <option value="unknown">{t.calendarSelect}</option>
-                <option value="hijri">{t.calendarHijri}</option>
-                <option value="gregorian">{t.calendarGregorian}</option>
-              </select>
-            </div>
-          </div>
-          <p className="m-0 mt-1.5 text-xs text-[#685F58]">{t.dateHelperText}</p>
-        </div>
+            {/* Document Number + Date of Birth (same row) */}
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
+              <div>
+                {renderLabel(t.fieldDocumentNumber, 'documentNumber', true)}
+                <input
+                  type="text"
+                  dir="ltr"
+                  inputMode="text"
+                  value={form.documentNumber}
+                  onChange={(e) => onChangeField('documentNumber', toAsciiDigits(e.target.value))}
+                  placeholder={t.fieldDocumentNumberPlaceholder}
+                  className={`${inputClass('documentNumber')} ltr-field tabular-nums`}
+                />
+              </div>
 
-        {/* Expiry Date (when applicable) */}
-        {vis.showExpiryDate && (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
-              {renderLabel(t.fieldExpiryDate, 'expiryDate', false)}
-              <input
-                type="text"
-                dir="ltr"
-                value={form.expiryDate}
-                onChange={(e) => onChangeField('expiryDate', toAsciiDigits(e.target.value))}
-                onBlur={() => {
-                  const { formatted, inferredCalendar } = normalizeDateInput(form.expiryDate);
-                  if (formatted !== form.expiryDate) {
-                    onChangeField('expiryDate', formatted);
-                  }
-                  if (form.expiryCalendar === 'unknown' && inferredCalendar) {
-                    onChangeField('expiryCalendar', inferredCalendar);
-                  }
-                }}
-                placeholder={t.fieldDatePlaceholder}
-                className={`${inputClass('expiryDate')} ltr-field tabular-nums`}
-              />
+              <div>
+                {renderLabel(t.fieldDateOfBirth, 'dateOfBirth', true)}
+                <input
+                  type="text"
+                  dir="ltr"
+                  value={form.dateOfBirth}
+                  onChange={(e) => {
+                    const nextDob = toAsciiDigits(e.target.value);
+                    onChangeField('dateOfBirth', nextDob);
+                    const { inferredCalendar } = normalizeDateInput(nextDob);
+                    if (inferredCalendar) {
+                      onChangeField('birthCalendar', inferredCalendar);
+                    }
+                  }}
+                  onBlur={() => {
+                    const { formatted, inferredCalendar } = normalizeDateInput(form.dateOfBirth);
+                    if (formatted !== form.dateOfBirth) {
+                      onChangeField('dateOfBirth', formatted);
+                    }
+                    if (inferredCalendar) {
+                      onChangeField('birthCalendar', inferredCalendar);
+                    }
+                  }}
+                  placeholder={t.fieldDatePlaceholder}
+                  className={`${inputClass('dateOfBirth')} ltr-field tabular-nums`}
+                />
+              </div>
             </div>
 
-            <div>
-              {renderLabel(t.fieldExpiryCalendar, 'expiryCalendar', false)}
-              <select
-                value={form.expiryCalendar}
-                onChange={(e) =>
-                  onChangeField('expiryCalendar', e.target.value as CalendarType)
-                }
-                className={inputClass('expiryCalendar')}
-              >
-                <option value="unknown">{t.calendarSelect}</option>
-                <option value="hijri">{t.calendarHijri}</option>
-                <option value="gregorian">{t.calendarGregorian}</option>
-              </select>
+            {/* Nationality + Sex (same row) */}
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
+              <div>
+                {renderLabel(t.fieldNationality, 'nationality', true)}
+                <input
+                  type="text"
+                  value={form.nationality}
+                  onChange={(e) => onChangeField('nationality', e.target.value)}
+                  placeholder={t.fieldNationalityPlaceholder}
+                  className={inputClass('nationality')}
+                />
+              </div>
+
+              <div>
+                {renderLabel(t.fieldSex, 'sex', false)}
+                <select
+                  value={form.sex}
+                  onChange={(e) => onChangeField('sex', e.target.value as SexType)}
+                  className={inputClass('sex')}
+                >
+                  <option value="">{t.sexSelect}</option>
+                  <option value="male">{t.sexMale}</option>
+                  <option value="female">{t.sexFemale}</option>
+                </select>
+              </div>
             </div>
-          </div>
+
+          </>
         )}
 
-        {/* Version Number (National ID & Iqama) */}
-        {vis.showVersionNumber && (
+        {/* Expiry Date + Version Number (same row when both apply) */}
+        {(vis.showExpiryDate || vis.showVersionNumber) && (
           <div>
-            {renderLabel(t.fieldVersionNumber, 'versionNumber', vis.requireVersionNumber)}
-            <input
-              type="text"
-              dir="ltr"
-              inputMode="numeric"
-              value={form.versionNumber}
-              onChange={(e) => onChangeField('versionNumber', toAsciiDigits(e.target.value))}
-              placeholder={t.fieldVersionPlaceholder}
-              className={`${inputClass('versionNumber')} ltr-field tabular-nums`}
-            />
-            <p className="m-0 mt-1.5 text-xs text-[#685F58]">{t.versionHelperText}</p>
+            <div
+              className={`grid gap-3 sm:gap-4 ${
+                vis.showExpiryDate && vis.showVersionNumber ? 'grid-cols-2' : 'grid-cols-1'
+              }`}
+            >
+              {vis.showExpiryDate && (
+                <div>
+                  {renderLabel(t.fieldExpiryDate, 'expiryDate', false)}
+                  <input
+                    type="text"
+                    dir="ltr"
+                    value={form.expiryDate}
+                    onChange={(e) => {
+                      const nextExpiry = toAsciiDigits(e.target.value);
+                      onChangeField('expiryDate', nextExpiry);
+                      const { inferredCalendar } = normalizeDateInput(nextExpiry);
+                      if (inferredCalendar) {
+                        onChangeField('expiryCalendar', inferredCalendar);
+                      }
+                    }}
+                    onBlur={() => {
+                      const { formatted, inferredCalendar } = normalizeDateInput(form.expiryDate);
+                      if (formatted !== form.expiryDate) {
+                        onChangeField('expiryDate', formatted);
+                      }
+                      if (inferredCalendar) {
+                        onChangeField('expiryCalendar', inferredCalendar);
+                      }
+                    }}
+                    placeholder={t.fieldDatePlaceholder}
+                    className={`${inputClass('expiryDate')} ltr-field tabular-nums`}
+                  />
+                </div>
+              )}
+
+              {vis.showVersionNumber && (
+                <div>
+                  {renderLabel(t.fieldVersionNumber, 'versionNumber', vis.requireVersionNumber)}
+                  <input
+                    type="text"
+                    dir="ltr"
+                    inputMode="numeric"
+                    value={form.versionNumber}
+                    onChange={(e) => onChangeField('versionNumber', toAsciiDigits(e.target.value))}
+                    placeholder={t.fieldVersionPlaceholder}
+                    className={`${inputClass('versionNumber')} ltr-field tabular-nums`}
+                  />
+                </div>
+              )}
+            </div>
+            {vis.showVersionNumber && (
+              <p className="m-0 mt-1.5 text-xs text-[#685F58]">{t.versionHelperText}</p>
+            )}
           </div>
         )}
 

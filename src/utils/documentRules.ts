@@ -212,9 +212,124 @@ export function switchDocumentType(
   };
 }
 
+function hijriToGregorianUtcDate(hy: number, hm: number, hd: number): Date {
+  const jd =
+    Math.floor((11 * hy + 3) / 30) +
+    354 * hy +
+    30 * hm -
+    Math.floor((hm - 1) / 2) +
+    hd +
+    1948440 -
+    385;
+  let l = jd + 68569;
+  const n = Math.floor((4 * l) / 146097);
+  l = l - Math.floor((146097 * n + 3) / 4);
+  const i = Math.floor((4000 * (l + 1)) / 1461001);
+  l = l - Math.floor((1461 * i) / 4) + 31;
+  const j = Math.floor((80 * l) / 2447);
+  const d = l - Math.floor((2447 * j) / 80);
+  l = Math.floor(j / 11);
+  const m = j + 2 - 12 * l;
+  const y = 100 * (n - 49) + i + l;
+  return new Date(Date.UTC(y, m - 1, d));
+}
+
+export function calculateMemberAgeYears(
+  dateOfBirth: string,
+  birthCalendar: CalendarType,
+  referenceDate: Date = new Date()
+): number | null {
+  const ascii = toAsciiDigits(dateOfBirth).trim();
+  if (!ascii) return null;
+
+  const parts = ascii.split(/[/\-.]/).filter(Boolean);
+  if (parts.length !== 3) return null;
+
+  const p0 = Number(parts[0]);
+  const p1 = Number(parts[1]);
+  const p2 = Number(parts[2]);
+  if (!Number.isFinite(p0) || !Number.isFinite(p1) || !Number.isFinite(p2)) {
+    return null;
+  }
+
+  let year: number;
+  let month: number;
+  let day: number;
+
+  if (parts[0].length === 4) {
+    year = p0;
+    month = p1;
+    day = p2;
+  } else if (parts[2].length === 4) {
+    day = p0;
+    month = p1;
+    year = p2;
+  } else {
+    return null;
+  }
+
+  if (month < 1 || month > 12 || day < 1 || day > 31) {
+    return null;
+  }
+
+  let effectiveCalendar: CalendarType = birthCalendar;
+  if (year >= 1300 && year <= 1550) {
+    effectiveCalendar = 'hijri';
+  } else if (year >= 1900 && year <= 2100) {
+    effectiveCalendar = 'gregorian';
+  }
+
+  let dobDate: Date;
+  if (effectiveCalendar === 'hijri') {
+    dobDate = hijriToGregorianUtcDate(year, month, day);
+  } else if (effectiveCalendar === 'gregorian') {
+    dobDate = new Date(Date.UTC(year, month - 1, day));
+  } else {
+    return null;
+  }
+
+  const refYear = referenceDate.getUTCFullYear();
+  const refMonth = referenceDate.getUTCMonth() + 1;
+  const refDay = referenceDate.getUTCDate();
+
+  const dobYear = dobDate.getUTCFullYear();
+  const dobMonth = dobDate.getUTCMonth() + 1;
+  const dobDay = dobDate.getUTCDate();
+
+  let age = refYear - dobYear;
+  if (refMonth < dobMonth || (refMonth === dobMonth && refDay < dobDay)) {
+    age -= 1;
+  }
+  return age;
+}
+
+export function isMemberUnder18(
+  member: Pick<FamilyMember, 'dateOfBirth' | 'birthCalendar'>,
+  referenceDate: Date = new Date()
+): boolean {
+  const age = calculateMemberAgeYears(member.dateOfBirth, member.birthCalendar, referenceDate);
+  return age !== null && age < 18;
+}
+
+function normalizeMemberNameKey(name: string): string {
+  return name.trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
+function isCardholderRelationship(relationship: string): boolean {
+  const rel = relationship.trim().toLowerCase();
+  return (
+    rel.includes('رب الأسرة') ||
+    rel.includes('رب الاسرة') ||
+    rel.includes('صاحب السجل') ||
+    rel.includes('صاحب الكرت') ||
+    rel.includes('holder') ||
+    rel.includes('head')
+  );
+}
+
 /**
  * Maps validated Gemini extraction onto editable GuestFormData,
- * preserving manual selections (visit purpose, booking source, mobile) if already entered.
+ * ordering Family Register as [cardholder, member 1, member 2, ...] and appending back-page members.
  */
 export function applyExtractedDataToForm(
   current: GuestFormData,
@@ -234,7 +349,7 @@ export function applyExtractedDataToForm(
 
   const vis = getFieldVisibility(nextType);
 
-  const familyMembers: FamilyMember[] = (extracted.familyMembers ?? []).map((m, idx) => {
+  let incomingMembers: FamilyMember[] = (extracted.familyMembers ?? []).map((m, idx) => {
     const normalizedDob = normalizeDateInput(m.dateOfBirth ?? '');
     const rawCal = (m.birthCalendar ?? 'unknown') as CalendarType;
     return {
@@ -267,6 +382,160 @@ export function applyExtractedDataToForm(
   const incomingSex = (extracted.sex === 'male' || extracted.sex === 'female'
     ? extracted.sex
     : '') as SexType;
+
+  const isSameFamilyMember = (a: FamilyMember, b: FamilyMember): boolean => {
+    const docA = a.documentNumber.trim();
+    const docB = b.documentNumber.trim();
+    if (docA && docB) {
+      return docA === docB;
+    }
+    const nameA = normalizeMemberNameKey(a.fullName);
+    const nameB = normalizeMemberNameKey(b.fullName);
+    if (!nameA || !nameB) return false;
+    if (nameA === nameB) return true;
+    // Match slightly shortened vs full name (e.g. missing tribal surname) when IDs don't conflict
+    return (nameA.startsWith(`${nameB} `) || nameB.startsWith(`${nameA} `)) && nameA.split(' ').length >= 3 && nameB.split(' ').length >= 3;
+  };
+
+  // Deduplicate incoming members while preserving first-seen order
+  const dedupedIncoming: FamilyMember[] = [];
+  for (const m of incomingMembers) {
+    const dup = dedupedIncoming.find((existing) => isSameFamilyMember(existing, m));
+    if (dup) {
+      if (!dup.documentNumber && m.documentNumber) dup.documentNumber = m.documentNumber;
+      if (!dup.dateOfBirth && m.dateOfBirth) dup.dateOfBirth = m.dateOfBirth;
+      if (dup.birthCalendar === 'unknown' && m.birthCalendar !== 'unknown') {
+        dup.birthCalendar = m.birthCalendar;
+      }
+      if (!dup.sex && m.sex) dup.sex = m.sex;
+      if (!dup.relationship && m.relationship) dup.relationship = m.relationship;
+      if (m.fullName.trim().length > dup.fullName.trim().length) {
+        dup.fullName = m.fullName;
+      }
+    } else {
+      dedupedIncoming.push(m);
+    }
+  }
+  incomingMembers = dedupedIncoming;
+
+  // Ensure cardholder is always index 0 in Family Register, followed by 1, 2, 3...
+  if (nextType === 'family_register') {
+    const topDoc = (extracted.documentNumber ?? '').trim();
+    const topNameKey = normalizeMemberNameKey(extracted.fullName ?? '');
+    const topProbe: FamilyMember = {
+      id: 'probe',
+      fullName: extracted.fullName ?? '',
+      documentNumber: topDoc,
+      sex: incomingSex,
+      dateOfBirth: '',
+      birthCalendar: 'unknown',
+      relationship: '',
+    };
+
+    if (incomingMembers.length > 0) {
+      const holderIdx = incomingMembers.findIndex((m) => {
+        if (topDoc && m.documentNumber.trim() === topDoc) return true;
+        if (topNameKey && isSameFamilyMember(m, topProbe)) return true;
+        return isCardholderRelationship(m.relationship);
+      });
+
+      if (holderIdx > 0) {
+        const [holder] = incomingMembers.splice(holderIdx, 1);
+        incomingMembers = [holder, ...incomingMembers];
+      } else if (holderIdx === -1 && !mergeMissingOnly && (extracted.fullName || topDoc)) {
+        const topNormDob = normalizeDateInput(extracted.dateOfBirth ?? '');
+        incomingMembers = [
+          {
+            id: 'member_holder',
+            fullName: extracted.fullName ?? '',
+            nameParts: extracted.nameParts,
+            documentNumber: topDoc,
+            sex: incomingSex,
+            dateOfBirth: topNormDob.formatted || (extracted.dateOfBirth ?? ''),
+            birthCalendar:
+              incomingCal !== 'unknown'
+                ? incomingCal
+                : (topNormDob.inferredCalendar ?? 'unknown'),
+            relationship: 'صاحب السجل',
+          },
+          ...incomingMembers,
+        ];
+      }
+    } else if (!mergeMissingOnly && (extracted.fullName || topDoc)) {
+      const topNormDob = normalizeDateInput(extracted.dateOfBirth ?? '');
+      incomingMembers = [
+        {
+          id: 'member_1',
+          fullName: extracted.fullName ?? '',
+          nameParts: extracted.nameParts,
+          documentNumber: topDoc,
+          sex: incomingSex,
+          dateOfBirth: topNormDob.formatted || (extracted.dateOfBirth ?? ''),
+          birthCalendar:
+            incomingCal !== 'unknown'
+              ? incomingCal
+              : (topNormDob.inferredCalendar ?? 'unknown'),
+          relationship: 'صاحب السجل',
+        },
+      ];
+    }
+  }
+
+  let finalFamilyMembers: FamilyMember[];
+  if (nextType !== 'family_register') {
+    finalFamilyMembers = [];
+  } else if (mergeMissingOnly && current.familyMembers.length > 0) {
+    // Preserve front-page order [cardholder, 1, 2, ...] and append new back-page members
+    const merged = current.familyMembers.map((m) => ({ ...m }));
+    for (const candidate of incomingMembers) {
+      const existing = merged.find((m) => isSameFamilyMember(m, candidate));
+      if (existing) {
+        if (!existing.documentNumber && candidate.documentNumber) {
+          existing.documentNumber = candidate.documentNumber;
+        }
+        if (!existing.dateOfBirth && candidate.dateOfBirth) {
+          existing.dateOfBirth = candidate.dateOfBirth;
+        }
+        if (existing.birthCalendar === 'unknown' && candidate.birthCalendar !== 'unknown') {
+          existing.birthCalendar = candidate.birthCalendar;
+        }
+        if (!existing.sex && candidate.sex) existing.sex = candidate.sex;
+        if (!existing.relationship && candidate.relationship) {
+          existing.relationship = candidate.relationship;
+        }
+      } else {
+        merged.push({
+          ...candidate,
+          id: `member_${merged.length + 1}`,
+        });
+      }
+    }
+    finalFamilyMembers = merged;
+  } else {
+    finalFamilyMembers = incomingMembers.map((m, idx) => ({
+      ...m,
+      id: `member_${idx + 1}`,
+    }));
+  }
+
+  const eligiblePrimary =
+    finalFamilyMembers.find((m) => !isMemberUnder18(m)) ?? finalFamilyMembers[0] ?? null;
+
+  const existingPrimaryValid =
+    mergeMissingOnly &&
+    current.primaryMemberId &&
+    finalFamilyMembers.some(
+      (m) => m.id === current.primaryMemberId && !isMemberUnder18(m)
+    );
+
+  const resolvedPrimaryId =
+    nextType === 'family_register'
+      ? existingPrimaryValid
+        ? current.primaryMemberId
+        : eligiblePrimary
+          ? eligiblePrimary.id
+          : null
+      : null;
 
   const updated: GuestFormData = {
     ...current,
@@ -302,18 +571,8 @@ export function applyExtractedDataToForm(
     borderNumber: mergeMissingOnly && vis.showBorderNumber ? current.borderNumber : '',
     borderNumberUnknown: mergeMissingOnly && vis.showBorderNumber ? current.borderNumberUnknown : false,
     mobileNumber: current.mobileNumber.trim() ? current.mobileNumber : DEFAULT_SAUDI_DIAL_CODE,
-    familyMembers:
-      mergeMissingOnly && current.familyMembers.length > 0 && familyMembers.length === 0
-        ? current.familyMembers
-        : familyMembers,
-    primaryMemberId:
-      nextType === 'family_register'
-        ? mergeMissingOnly && current.primaryMemberId
-          ? current.primaryMemberId
-          : familyMembers.length > 0
-            ? familyMembers[0].id
-            : null
-        : null,
+    familyMembers: finalFamilyMembers,
+    primaryMemberId: resolvedPrimaryId,
     accompanyingMemberIds: mergeMissingOnly ? current.accompanyingMemberIds : [],
   };
 
@@ -337,15 +596,15 @@ export function applyExtractedDataToForm(
 }
 
 /**
- * Selects a primary guest from extracted family members without copying
- * the main record holder's document number onto other members.
+ * Selects a primary guest from extracted family members (18+ only)
+ * without copying the main record holder's document number onto other members.
  */
 export function selectPrimaryFamilyMember(
   current: GuestFormData,
   memberId: string
 ): GuestFormData {
   const member = current.familyMembers.find((m) => m.id === memberId);
-  if (!member) return current;
+  if (!member || isMemberUnder18(member)) return current;
 
   return {
     ...current,
@@ -359,7 +618,7 @@ export function selectPrimaryFamilyMember(
     birthCalendar:
       member.birthCalendar && member.birthCalendar !== 'unknown'
         ? member.birthCalendar
-        : current.birthCalendar,
+        : (normalizeDateInput(member.dateOfBirth).inferredCalendar ?? current.birthCalendar),
   };
 }
 
@@ -402,7 +661,12 @@ export function validateGuestRequest(
   if (!form.dateOfBirth.trim()) {
     missing.push('dateOfBirth');
   }
-  if (!form.birthCalendar || form.birthCalendar === 'unknown') {
+  const effectiveBirthCalendar =
+    form.birthCalendar && form.birthCalendar !== 'unknown'
+      ? form.birthCalendar
+      : (normalizeDateInput(form.dateOfBirth).inferredCalendar ?? 'unknown');
+
+  if (form.documentType === 'family_register' && effectiveBirthCalendar === 'unknown') {
     missing.push('birthCalendar');
   }
   if (!isValidMobileNumber(form.mobileNumber)) {
@@ -509,14 +773,24 @@ export function buildWhatsAppMessage(
     lines.push(`الجنس / Sex: ${sexText}`);
   }
 
+  const effectiveBirthCalendar =
+    form.birthCalendar && form.birthCalendar !== 'unknown'
+      ? form.birthCalendar
+      : (normalizeDateInput(form.dateOfBirth).inferredCalendar ?? 'unknown');
+  const birthCalSuffix =
+    effectiveBirthCalendar !== 'unknown' ? ` (${formatCalendarLabel(effectiveBirthCalendar)})` : '';
   lines.push(
-    `تاريخ الميلاد والتقويم / Date of birth and calendar: ${form.dateOfBirth.trim()} (${formatCalendarLabel(form.birthCalendar)})`
+    `تاريخ الميلاد / Date of birth: ${form.dateOfBirth.trim()}${birthCalSuffix}`
   );
 
+  const effectiveExpiryCalendar =
+    form.expiryCalendar && form.expiryCalendar !== 'unknown'
+      ? form.expiryCalendar
+      : (normalizeDateInput(form.expiryDate).inferredCalendar ?? 'unknown');
   if (vis.showExpiryDate && form.expiryDate.trim()) {
     const expCal =
-      form.expiryCalendar && form.expiryCalendar !== 'unknown'
-        ? ` (${formatCalendarLabel(form.expiryCalendar)})`
+      effectiveExpiryCalendar !== 'unknown'
+        ? ` (${formatCalendarLabel(effectiveExpiryCalendar)})`
         : '';
     lines.push(`تاريخ الانتهاء / Expiry date: ${form.expiryDate.trim()}${expCal}`);
   }

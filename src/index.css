@@ -42,6 +42,15 @@ html[lang="en"] body {
   unicode-bidi: isolate;
 }
 
+.wheel-scrollbar-hidden {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.wheel-scrollbar-hidden::-webkit-scrollbar {
+  display: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;

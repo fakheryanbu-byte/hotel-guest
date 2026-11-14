@@ -24,6 +24,7 @@ import {
   buildWhatsAppMessage,
   buildWhatsAppUrl,
   createEmptyGuestForm,
+  isMemberUnder18,
   selectPrimaryFamilyMember,
   switchDocumentType,
   validateGuestRequest,
@@ -317,6 +318,16 @@ export default function App() {
       }
       if (prev.primaryMemberId === memberId && patch.birthCalendar !== undefined) {
         next.birthCalendar = patch.birthCalendar;
+      }
+      if (prev.primaryMemberId === memberId) {
+        const editedPrimary = updatedMembers.find((m) => m.id === memberId);
+        if (editedPrimary && isMemberUnder18(editedPrimary)) {
+          const fallbackAdult = updatedMembers.find((m) => !isMemberUnder18(m));
+          if (fallbackAdult) {
+            return selectPrimaryFamilyMember(next, fallbackAdult.id);
+          }
+          next.primaryMemberId = null;
+        }
       }
       return next;
     });
