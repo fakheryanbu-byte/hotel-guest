@@ -142,6 +142,11 @@ export default function App() {
         body: JSON.stringify({ images }),
       });
 
+      if (response.status === 413) {
+        setReadError(t.errFileTooLarge);
+        return;
+      }
+
       const contentType = response.headers.get('content-type') ?? '';
       if (!contentType.includes('application/json')) {
         setReadError(t.errServerFailed);
@@ -153,7 +158,9 @@ export default function App() {
         | null;
 
       if (!response.ok || !payload || !payload.data || typeof payload.data !== 'object') {
-        if (payload?.code === 'GEMINI_QUOTA_EXCEEDED') {
+        if (payload?.code === 'FILE_TOO_LARGE') {
+          setReadError(t.errFileTooLarge);
+        } else if (payload?.code === 'GEMINI_QUOTA_EXCEEDED') {
           setReadError(t.errGeminiQuotaExceeded);
         } else if (response.status === 429 || payload?.code === 'RATE_LIMITED') {
           setReadError(t.errRateLimited);

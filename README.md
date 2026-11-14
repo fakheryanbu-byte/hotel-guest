@@ -48,7 +48,17 @@ npm run build
 NODE_ENV=production npm start
 ```
 
-### 4. الاختبارات وفحص الأنواع
+### 4. النشر على Vercel
+يحتوي المشروع على دوال Serverless في مجلد `api/` وملف `vercel.json` متوافق مع Vercel. عند الرفع على Vercel:
+1. افتح إعدادات المشروع في **Vercel > Settings > Environment Variables** وأضف المتغيرات الخمسة التالية:
+   - `GEMINI_API_KEY`
+   - `HOTEL_WHATSAPP_FAKHR_YANBU_1`
+   - `HOTEL_WHATSAPP_FAKHR_YANBU_3`
+   - `HOTEL_WHATSAPP_FAKHR_YANBU_5`
+   - `HOTEL_WHATSAPP_TIM_HOTEL`
+2. أعد النشر (**Redeploy**) بعد حفظ المتغيرات لتعمل قراءة الوثائق وروابط واتساب لكل الفروع.
+
+### 5. الاختبارات وفحص الأنواع
 
 ```bash
 npm run lint

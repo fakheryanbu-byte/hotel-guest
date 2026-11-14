@@ -52,7 +52,7 @@ function readFileAsDataUrl(file: File): Promise<string> {
 
 /**
  * Prepares an image for temporary Gemini analysis while preserving legibility of fine text/MRZ.
- * Only gently downscales images larger than 2400px or 3.5MB when canvas supports the format.
+ * Keeps individual uploads compact (typically <= 1.4 MB) so 1-2 images fit well inside Vercel's 4.5 MB limit.
  */
 export async function prepareImageForUpload(
   file: File
@@ -60,13 +60,12 @@ export async function prepareImageForUpload(
   const mimeType = inferMimeType(file);
   const dataUrl = await readFileAsDataUrl(file);
 
-  // For HEIC/HEIF or already crisp reasonable images <= 3.5 MB, keep original bytes untouched
-  if (mimeType === 'image/heic' || mimeType === 'image/heif' || file.size <= 3.5 * 1024 * 1024) {
+  // For HEIC/HEIF (cannot be reliably re-encoded via canvas across all browsers) or compact images <= 900 KB
+  if (mimeType === 'image/heic' || mimeType === 'image/heif' || file.size <= 900 * 1024) {
     const base64 = dataUrl.split(',')[1] ?? '';
     return { base64, mimeType };
   }
 
-  // Gently downscale oversized photos (> 3.5 MB) to max 2400px while preserving high JPEG quality (0.92)
   try {
     const img = await new Promise<HTMLImageElement>((resolve, reject) => {
       const el = new Image();
@@ -75,23 +74,29 @@ export async function prepareImageForUpload(
       el.src = dataUrl;
     });
 
-    const maxDim = 2400;
-    const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
-    const targetW = Math.round(img.width * scale);
-    const targetH = Math.round(img.height * scale);
+    const encodeAt = (maxDim: number, quality: number): string => {
+      const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+      const targetW = Math.max(1, Math.round(img.width * scale));
+      const targetH = Math.max(1, Math.round(img.height * scale));
+      const canvas = document.createElement('canvas');
+      canvas.width = targetW;
+      canvas.height = targetH;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return '';
+      ctx.drawImage(img, 0, 0, targetW, targetH);
+      return canvas.toDataURL('image/jpeg', quality).split(',')[1] ?? '';
+    };
 
-    const canvas = document.createElement('canvas');
-    canvas.width = targetW;
-    canvas.height = targetH;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) {
-      const base64 = dataUrl.split(',')[1] ?? '';
-      return { base64, mimeType };
+    let base64 = encodeAt(1800, 0.86);
+    // If still > ~1.4 MB binary (~1.9 MB base64), step down slightly so 2 pages stay under 4.5 MB JSON
+    if (base64.length > 1_900_000) {
+      base64 = encodeAt(1400, 0.78) || base64;
     }
-    ctx.drawImage(img, 0, 0, targetW, targetH);
-    const outDataUrl = canvas.toDataURL('image/jpeg', 0.92);
-    const base64 = outDataUrl.split(',')[1] ?? '';
-    return { base64, mimeType: 'image/jpeg' };
+
+    if (base64) {
+      return { base64, mimeType: 'image/jpeg' };
+    }
+    return { base64: dataUrl.split(',')[1] ?? '', mimeType };
   } catch {
     const base64 = dataUrl.split(',')[1] ?? '';
     return { base64, mimeType };
